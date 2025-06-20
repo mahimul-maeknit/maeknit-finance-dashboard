@@ -53,7 +53,6 @@ export default function FinanceDashboard() {
   const [laborCostMultiplier, setLaborCostMultiplier] = useState(1)
   const [rentMultiplier, setRentMultiplier] = useState(1)
   const [materialCostMultiplier, setMaterialCostMultiplier] = useState(1)
-  const [showCashFlow, setShowCashFlow] = useState(false)
 
   const BASE_EXPENSES = {
     teamLabor: teamLabor,
