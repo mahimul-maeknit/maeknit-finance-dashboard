@@ -1,10 +1,12 @@
 "use client"
 
+import { useState } from "react" // Import useState for loading state
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button" // Import Button
 
 interface SettingsPanelProps {
   // Expenses
@@ -52,6 +54,9 @@ interface SettingsPanelProps {
   setE35StollTime: (value: number) => void
   e18SwgTime: number
   setE18SwgTime: (value: number) => void
+
+  // New prop for saving settings
+  onSave: () => Promise<void>
 }
 
 export function SettingsPanel({
@@ -91,8 +96,16 @@ export function SettingsPanel({
   setE35StollTime,
   e18SwgTime,
   setE18SwgTime,
+  onSave, // Destructure the new prop
 }: SettingsPanelProps) {
+  const [isSaving, setIsSaving] = useState(false) // State for saving loading
   const totalMonthlyExpenses = teamLabor + rent + electricity + water + materialCost + overhead
+
+  const handleSaveClick = async () => {
+    setIsSaving(true)
+    await onSave()
+    setIsSaving(false)
+  }
 
   return (
     <div className="space-y-6">
@@ -352,6 +365,13 @@ export function SettingsPanel({
           </div>
         </CardContent>
       </Card>
+
+      {/* Save Settings Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleSaveClick} disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save Settings"}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -17,11 +17,33 @@ import AuthStatus from "@/components/auth-status"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
+// Define a type for the savable settings
+type SavableSettings = {
+  teamLabor: number
+  rent: number
+  electricity: number
+  water: number
+  materialCost: number
+  overhead: number
+  waterRate: number
+  electricityRate: number
+  laborRate: number
+  swatchPrice: number
+  samplePrice: number
+  gradingPrice: number
+  e72StollCapacity: number
+  e35StollCapacity: number
+  e18SwgCapacity: number
+  e72StollTime: number
+  e35StollTime: number
+  e18SwgTime: number
+}
+
 export default function FinanceDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  // Editable expense fields - MOVED TO TOP
+  // Editable expense fields
   const [teamLabor, setTeamLabor] = useState(50684)
   const [rent, setRent] = useState(7000)
   const [electricity, setElectricity] = useState(450)
@@ -29,22 +51,22 @@ export default function FinanceDashboard() {
   const [materialCost, setMaterialCost] = useState(2000)
   const [overhead, setOverhead] = useState(4240)
 
-  // Editable utility rates - MOVED TO TOP
+  // Editable utility rates
   const [waterRate, setWaterRate] = useState(1.69)
   const [electricityRate, setElectricityRate] = useState(0.32)
   const [laborRate, setLaborRate] = useState(30)
 
-  // Editable service pricing - MOVED TO TOP
+  // Editable service pricing
   const [swatchPrice, setSwatchPrice] = useState(250)
   const [samplePrice, setSamplePrice] = useState(2000)
   const [gradingPrice, setGradingPrice] = useState(2500)
 
-  // Editable machine capacities - MOVED TO TOP
+  // Editable machine capacities
   const [e72StollCapacity, setE72StollCapacity] = useState(16)
   const [e35StollCapacity, setE35StollCapacity] = useState(10)
   const [e18SwgCapacity, setE18SwgCapacity] = useState(16)
 
-  // Editable time requirements - MOVED TO TOP
+  // Editable time requirements
   const [e72StollTime, setE72StollTime] = useState(3)
   const [e35StollTime, setE35StollTime] = useState(1)
   const [e18SwgTime, setE18SwgTime] = useState(1)
@@ -204,6 +226,91 @@ export default function FinanceDashboard() {
       profit: calculations.profit,
     },
   ]
+
+  // Function to save settings to the database
+  const handleSaveSettings = async () => {
+    const settingsToSave: SavableSettings = {
+      teamLabor,
+      rent,
+      electricity,
+      water,
+      materialCost,
+      overhead,
+      waterRate,
+      electricityRate,
+      laborRate,
+      swatchPrice,
+      samplePrice,
+      gradingPrice,
+      e72StollCapacity,
+      e35StollCapacity,
+      e18SwgCapacity,
+      e72StollTime,
+      e35StollTime,
+      e18SwgTime,
+    }
+
+    try {
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(settingsToSave),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to save settings")
+      }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error("Error saving settings:", error)
+      
+    }
+  }
+
+  // Fetch settings on component mount if authorized
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (status === "authenticated" && session?.user?.email === "mahimul@maeknit.io") {
+        try {
+          const response = await fetch("/api/settings")
+          if (!response.ok) {
+            throw new Error("Failed to fetch settings")
+          }
+          const fetchedSettings: SavableSettings = await response.json()
+
+          // Update state with fetched settings if they exist
+          if (Object.keys(fetchedSettings).length > 0) {
+            // Check if fetchedSettings is not empty
+            setTeamLabor(fetchedSettings.teamLabor)
+            setRent(fetchedSettings.rent)
+            setElectricity(fetchedSettings.electricity)
+            setWater(fetchedSettings.water)
+            setMaterialCost(fetchedSettings.materialCost)
+            setOverhead(fetchedSettings.overhead)
+            setWaterRate(fetchedSettings.waterRate)
+            setElectricityRate(fetchedSettings.electricityRate)
+            setLaborRate(fetchedSettings.laborRate)
+            setSwatchPrice(fetchedSettings.swatchPrice)
+            setSamplePrice(fetchedSettings.samplePrice)
+            setGradingPrice(fetchedSettings.gradingPrice)
+            setE72StollCapacity(fetchedSettings.e72StollCapacity)
+            setE35StollCapacity(fetchedSettings.e35StollCapacity)
+            setE18SwgCapacity(fetchedSettings.e18SwgCapacity)
+            setE72StollTime(fetchedSettings.e72StollTime)
+            setE35StollTime(fetchedSettings.e35StollTime)
+            setE18SwgTime(fetchedSettings.e18SwgTime)
+          }
+        } catch (error) {
+          console.error("Error fetching settings:", error)
+        }
+      }
+    }
+    fetchSettings()
+  }, [session, status]) // Re-run when session or status changes
 
   // Redirect if not authenticated or not authorized
   useEffect(() => {
@@ -690,6 +797,7 @@ export default function FinanceDashboard() {
               setE35StollTime={setE35StollTime}
               e18SwgTime={e18SwgTime}
               setE18SwgTime={setE18SwgTime}
+              onSave={handleSaveSettings} // Pass the save function
             />
           </TabsContent>
         </Tabs>
