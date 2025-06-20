@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,9 +13,15 @@ import { SensitivityAnalysis } from "@/components/sensitivity-analysis"
 import { CashFlowProjection } from "@/components/cash-flow-projection"
 import { MachineROICalculator } from "@/components/machine-roi-calculator"
 import { SettingsPanel } from "@/components/settings-panel"
+import AuthStatus from "@/components/auth-status"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
 export default function FinanceDashboard() {
-  // Editable expense fields
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  // Editable expense fields - MOVED TO TOP
   const [teamLabor, setTeamLabor] = useState(50684)
   const [rent, setRent] = useState(7000)
   const [electricity, setElectricity] = useState(450)
@@ -23,22 +29,22 @@ export default function FinanceDashboard() {
   const [materialCost, setMaterialCost] = useState(2000)
   const [overhead, setOverhead] = useState(4240)
 
-  // Editable utility rates
+  // Editable utility rates - MOVED TO TOP
   const [waterRate, setWaterRate] = useState(1.69)
   const [electricityRate, setElectricityRate] = useState(0.32)
   const [laborRate, setLaborRate] = useState(30)
 
-  // Editable service pricing
+  // Editable service pricing - MOVED TO TOP
   const [swatchPrice, setSwatchPrice] = useState(250)
   const [samplePrice, setSamplePrice] = useState(2000)
   const [gradingPrice, setGradingPrice] = useState(2500)
 
-  // Editable machine capacities
+  // Editable machine capacities - MOVED TO TOP
   const [e72StollCapacity, setE72StollCapacity] = useState(16)
   const [e35StollCapacity, setE35StollCapacity] = useState(10)
   const [e18SwgCapacity, setE18SwgCapacity] = useState(16)
 
-  // Editable time requirements
+  // Editable time requirements - MOVED TO TOP
   const [e72StollTime, setE72StollTime] = useState(3)
   const [e35StollTime, setE35StollTime] = useState(1)
   const [e18SwgTime, setE18SwgTime] = useState(1)
@@ -199,12 +205,37 @@ export default function FinanceDashboard() {
     },
   ]
 
+  // Redirect if not authenticated or not authorized
+  useEffect(() => {
+    if (status === "loading") return // Do nothing while loading session
+
+    if (status === "unauthenticated" || session?.user?.email !== "mahimul@maeknit.io") {
+      router.push("/login")
+    }
+  }, [session, status, router])
+
+  // Show loading state while session is being fetched
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <p className="text-lg text-gray-600">Loading dashboard...</p>
+      </div>
+    )
+  }
+
+  // If authenticated but not authorized, the useEffect above will redirect.
+  // This ensures the dashboard content is only rendered for authorized users.
+  if (status === "unauthenticated" || session?.user?.email !== "mahimul@maeknit.io") {
+    return null // Or a simple message, as the redirect will happen
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      <AuthStatus />
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">NY Manufacturing Financial Dashboard</h1>
-          <p className="text-gray-600">Interactive financial modeling for textile operations</p>
+          <p className="text-gray-600">Interactive Financial Modeling for MAEKNIT</p>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
