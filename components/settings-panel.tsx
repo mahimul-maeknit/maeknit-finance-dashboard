@@ -350,7 +350,7 @@ export function SettingsPanel({
 
           <div className="p-4 bg-blue-50 rounded-lg">
             <div className="text-sm font-medium text-blue-800 mb-2">Total Machine Capacity</div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-blue-600">Daily Total:</span>{" "}
                 <span className="font-bold">{e72StollCapacity + e35StollCapacity + e18SwgCapacity} garments</span>

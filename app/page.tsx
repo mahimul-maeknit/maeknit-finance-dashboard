@@ -264,10 +264,13 @@ export default function FinanceDashboard() {
         throw new Error(errorData.error || "Failed to save settings")
       }
 
+      console.log("Settings Saved!", "Your financial dashboard settings have been successfully updated.")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      console.error("Error saving settings:", error)
-      
+      console.error(
+        "Error Saving Settings",
+        error.message || "There was an issue saving your settings. Please try again.",
+      )
     }
   }
 
@@ -303,14 +306,16 @@ export default function FinanceDashboard() {
             setE72StollTime(fetchedSettings.e72StollTime)
             setE35StollTime(fetchedSettings.e35StollTime)
             setE18SwgTime(fetchedSettings.e18SwgTime)
+            console.log("Settings Loaded!", "Previous settings have been loaded.")
           }
         } catch (error) {
           console.error("Error fetching settings:", error)
+          console.error("Error Loading Settings", "Could not load previous settings. Using default values.")
         }
       }
     }
     fetchSettings()
-  }, [session, status]) // Re-run when session or status changes
+  }, [session, status])
 
   // Redirect if not authenticated or not authorized
   useEffect(() => {
@@ -337,16 +342,16 @@ export default function FinanceDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <AuthStatus />
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-full px-4 sm:px-6 lg:px-8 mx-auto space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">NY Manufacturing Financial Dashboard</h1>
-          <p className="text-gray-600">Interactive Financial Modeling for MAEKNIT</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">NY Manufacturing Financial Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600">Interactive Financial Modeling for MAEKNIT</p>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="flex flex-wrap justify-center w-full gap-2">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="scenarios">Scenarios</TabsTrigger>
             <TabsTrigger value="breakdown">Breakdown</TabsTrigger>

@@ -14,8 +14,8 @@ export function MachineROICalculator() {
   const annualRevenue = additionalCapacity * 365 * avgGarmentPrice
   const annualOperatingCost = operatingCostPerMonth * 12
   const annualProfit = annualRevenue - annualOperatingCost
-  const paybackPeriod = machineCost / annualProfit
-  const roi = (annualProfit / machineCost) * 100
+  const paybackPeriod = annualProfit > 0 ? machineCost / annualProfit : Number.POSITIVE_INFINITY // Handle division by zero
+  const roi = annualProfit > 0 ? (annualProfit / machineCost) * 100 : 0 // Handle division by zero
 
   return (
     <Card>
@@ -65,7 +65,7 @@ export function MachineROICalculator() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-4 bg-blue-50 rounded-lg text-center">
             <div className="text-sm text-blue-600 font-medium">Annual Revenue</div>
             <div className="text-xl font-bold text-blue-800">${annualRevenue.toLocaleString()}</div>
@@ -78,7 +78,9 @@ export function MachineROICalculator() {
 
           <div className="p-4 bg-purple-50 rounded-lg text-center">
             <div className="text-sm text-purple-600 font-medium">Payback Period</div>
-            <div className="text-xl font-bold text-purple-800">{paybackPeriod.toFixed(1)} years</div>
+            <div className="text-xl font-bold text-purple-800">
+              {paybackPeriod === Number.POSITIVE_INFINITY ? "N/A" : `${paybackPeriod.toFixed(1)} years`}
+            </div>
           </div>
 
           <div className="p-4 bg-orange-50 rounded-lg text-center">
@@ -90,7 +92,10 @@ export function MachineROICalculator() {
         <div className="p-4 border rounded-lg">
           <h4 className="font-medium mb-2">Investment Analysis</h4>
           <div className="space-y-1 text-sm">
-            <div>• Break-even time: {paybackPeriod.toFixed(1)} years</div>
+            <div>
+              • Break-even time:{" "}
+              {paybackPeriod === Number.POSITIVE_INFINITY ? "N/A" : `${paybackPeriod.toFixed(1)} years`}
+            </div>
             <div>• 5-year total profit: ${(annualProfit * 5 - machineCost).toLocaleString()}</div>
             <div>• Monthly profit contribution: ${(annualProfit / 12).toLocaleString()}</div>
           </div>
