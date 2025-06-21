@@ -16,26 +16,23 @@ const GARMENT_TYPES = {
   "vintage cardigan": { machineTime: 110, linkingTime: 90, yarnCostPerKg: 25, garmentWeightGrams: 460 },
 } as const // Use 'as const' for type safety
 
-// Define fixed rates for USA (MAEKNIT)
-const USA_RATES = {
+// Define initial fixed rates for USA (MAEKNIT)
+const INITIAL_USA_FIXED_RATES = {
   knittingCostPerHour: 0.52,
   linkingCostPerHour: 0.55,
   qcHandFinishPerHour: 4,
   washingSteamingPerHour: 5.5,
   laborRatePerHour: 30, // "1 hour 30" from spreadsheet
-  marginPercent: 0.6, // 60% margin
 }
 
-// Define fixed rates for Turkey (ACN)
-const ACN_RATES = {
+// Define initial fixed rates for Turkey (ACN)
+const INITIAL_ACN_FIXED_RATES = {
   knittingCostPerHour: 0.1,
   linkingCostPerHour: 0.22,
   qcHandFinishPerHour: 2,
   washingSteamingPerHour: 2.5,
-  acnMarginPercent: 0.3, // 30% ACN margin
   dhlShipCost: 5,
   maeknitTariffPercent: 0.15, // Estimated 15% tariff
-  maeknitMarginPercent: 0.6, // 60% MAEKNIT margin
 }
 
 export function GarmentCostCalculator() {
@@ -44,6 +41,46 @@ export function GarmentCostCalculator() {
   const [customLinkingTime, setCustomLinkingTime] = useState<number | null>(null)
   const [customYarnCostPerKg, setCustomYarnCostPerKg] = useState<number | null>(null)
   const [customGarmentWeightGrams, setCustomGarmentWeightGrams] = useState<number | null>(null)
+
+  // State for margin percentages
+  const [usaMarginInput, setUsaMarginInput] = useState<number | null>(50) // Default to 50% as per spreadsheet
+  const [acnFactoryMarginInput, setAcnFactoryMarginInput] = useState<number | null>(30) // Default to 30%
+  const [maeknitAcnMarginInput, setMaeknitAcnMarginInput] = useState<number | null>(33) // Default to 33% as per spreadsheet
+
+  // State for USA fixed rates
+  const [usaKnittingCostPerHour, setUsaKnittingCostPerHour] = useState<number | null>(
+    INITIAL_USA_FIXED_RATES.knittingCostPerHour,
+  )
+  const [usaLinkingCostPerHour, setUsaLinkingCostPerHour] = useState<number | null>(
+    INITIAL_USA_FIXED_RATES.linkingCostPerHour,
+  )
+  const [usaQCHandFinishPerHour, setUsaQCHandFinishPerHour] = useState<number | null>(
+    INITIAL_USA_FIXED_RATES.qcHandFinishPerHour,
+  )
+  const [usaWashingSteamingPerHour, setUsaWashingSteamingPerHour] = useState<number | null>(
+    INITIAL_USA_FIXED_RATES.washingSteamingPerHour,
+  )
+  const [usaLaborRatePerHour, setUsaLaborRatePerHour] = useState<number | null>(
+    INITIAL_USA_FIXED_RATES.laborRatePerHour,
+  )
+
+  // State for ACN fixed rates
+  const [acnKnittingCostPerHour, setAcnKnittingCostPerHour] = useState<number | null>(
+    INITIAL_ACN_FIXED_RATES.knittingCostPerHour,
+  )
+  const [acnLinkingCostPerHour, setAcnLinkingCostPerHour] = useState<number | null>(
+    INITIAL_ACN_FIXED_RATES.linkingCostPerHour,
+  )
+  const [acnQCHandFinishPerHour, setAcnQCHandFinishPerHour] = useState<number | null>(
+    INITIAL_ACN_FIXED_RATES.qcHandFinishPerHour,
+  )
+  const [acnWashingSteamingPerHour, setAcnWashingSteamingPerHour] = useState<number | null>(
+    INITIAL_ACN_FIXED_RATES.washingSteamingPerHour,
+  )
+  const [acnDHLShipCost, setAcnDHLShipCost] = useState<number | null>(INITIAL_ACN_FIXED_RATES.dhlShipCost)
+  const [acnMaeknitTariffPercent, setAcnMaeknitTariffPercent] = useState<number | null>(
+    INITIAL_ACN_FIXED_RATES.maeknitTariffPercent,
+  )
 
   const currentGarment = GARMENT_TYPES[selectedGarment]
 
@@ -55,33 +92,56 @@ export function GarmentCostCalculator() {
     const garmentWeightGrams = customGarmentWeightGrams ?? currentGarment.garmentWeightGrams
     const garmentWeightKg = garmentWeightGrams / 1000
 
+    // Convert margin inputs to decimal percentages
+    const usaMarginPercent = (usaMarginInput ?? 0) / 100
+    const acnFactoryMarginPercent = (acnFactoryMarginInput ?? 0) / 100
+    const maeknitAcnMarginPercent = (maeknitAcnMarginInput ?? 0) / 100
+
+    // Use current state values for fixed rates, defaulting to 0 if null
+    const usaRates = {
+      knittingCostPerHour: usaKnittingCostPerHour ?? 0,
+      linkingCostPerHour: usaLinkingCostPerHour ?? 0,
+      qcHandFinishPerHour: usaQCHandFinishPerHour ?? 0,
+      washingSteamingPerHour: usaWashingSteamingPerHour ?? 0,
+      laborRatePerHour: usaLaborRatePerHour ?? 0,
+    }
+
+    const acnRates = {
+      knittingCostPerHour: acnKnittingCostPerHour ?? 0,
+      linkingCostPerHour: acnLinkingCostPerHour ?? 0,
+      qcHandFinishPerHour: acnQCHandFinishPerHour ?? 0,
+      washingSteamingPerHour: acnWashingSteamingPerHour ?? 0,
+      dhlShipCost: acnDHLShipCost ?? 0,
+      maeknitTariffPercent: acnMaeknitTariffPercent ?? 0,
+    }
+
     // --- MAEKNIT (USA) Calculations ---
     const usaYarnCost = yarnCostPerKg * garmentWeightKg
-    const usaMachineTimeCost = (machineTime / 60) * USA_RATES.knittingCostPerHour * USA_RATES.laborRatePerHour
-    const usaLinkingTimeCost = (linkingTime / 60) * USA_RATES.linkingCostPerHour * USA_RATES.laborRatePerHour
-    const usaWashingCost = USA_RATES.washingSteamingPerHour
-    const usaQCHandFinishCost = USA_RATES.qcHandFinishPerHour
+    const usaMachineTimeCost = (machineTime / 60) * usaRates.knittingCostPerHour * usaRates.laborRatePerHour
+    const usaLinkingTimeCost = (linkingTime / 60) * usaRates.linkingCostPerHour * usaRates.laborRatePerHour
+    const usaWashingCost = usaRates.washingSteamingPerHour
+    const usaQCHandFinishCost = usaRates.qcHandFinishPerHour
 
     const usaTotalCost = usaYarnCost + usaMachineTimeCost + usaLinkingTimeCost + usaWashingCost + usaQCHandFinishCost
-    const usaMargin = usaTotalCost * USA_RATES.marginPercent
+    const usaMargin = usaTotalCost * usaMarginPercent
     const usaTotalPrice = usaTotalCost + usaMargin
 
     // --- ACN (Turkey) Calculations ---
-    const acnMachineTimeCost = machineTime * ACN_RATES.knittingCostPerHour
-    const acnLinkingTimeCost = linkingTime * ACN_RATES.linkingCostPerHour
+    const acnMachineTimeCost = machineTime * acnRates.knittingCostPerHour
+    const acnLinkingTimeCost = linkingTime * acnRates.linkingCostPerHour
     const acnYarnCost = yarnCostPerKg * garmentWeightKg // Yarn cost is the same regardless of factory
-    const acnWashingCost = ACN_RATES.washingSteamingPerHour
-    const acnQCHandFinishCost = ACN_RATES.qcHandFinishPerHour
+    const acnWashingCost = acnRates.washingSteamingPerHour
+    const acnQCHandFinishCost = acnRates.qcHandFinishPerHour
 
     const acnDirectCost = acnMachineTimeCost + acnLinkingTimeCost + acnYarnCost + acnWashingCost + acnQCHandFinishCost
-    const acnMargin = acnDirectCost * ACN_RATES.acnMarginPercent
+    const acnMargin = acnDirectCost * acnFactoryMarginPercent
     const acnTotalPriceBeforeDHL = acnDirectCost + acnMargin
-    const acnTotalPriceWithDHL = acnTotalPriceBeforeDHL + ACN_RATES.dhlShipCost
+    const acnTotalPriceWithDHL = acnTotalPriceBeforeDHL + acnRates.dhlShipCost
 
     const maeknitCostFromACN = acnTotalPriceWithDHL
-    const maeknitTariff = maeknitCostFromACN * ACN_RATES.maeknitTariffPercent
+    const maeknitTariff = maeknitCostFromACN * acnRates.maeknitTariffPercent
     const maeknitCostAfterTariff = maeknitCostFromACN + maeknitTariff
-    const maeknitMarginFromACN = maeknitCostAfterTariff * ACN_RATES.maeknitMarginPercent
+    const maeknitMarginFromACN = maeknitCostAfterTariff * maeknitAcnMarginPercent
     const maeknitTotalPriceFromACN = maeknitCostAfterTariff + maeknitMarginFromACN
 
     return {
@@ -94,6 +154,7 @@ export function GarmentCostCalculator() {
         totalCost: usaTotalCost,
         margin: usaMargin,
         totalPrice: usaTotalPrice,
+        marginPercent: usaMarginPercent * 100, // Pass percentage for display
       },
       acn: {
         machineTimeCost: acnMachineTimeCost,
@@ -110,6 +171,8 @@ export function GarmentCostCalculator() {
         maeknitCostAfterTariff: maeknitCostAfterTariff,
         maeknitMarginFromACN: maeknitMarginFromACN,
         maeknitTotalPriceFromACN: maeknitTotalPriceFromACN,
+        acnFactoryMarginPercent: acnFactoryMarginPercent * 100, // Pass percentage for display
+        maeknitAcnMarginPercent: maeknitAcnMarginPercent * 100, // Pass percentage for display
       },
       currentInputs: {
         machineTime,
@@ -117,6 +180,8 @@ export function GarmentCostCalculator() {
         yarnCostPerKg,
         garmentWeightGrams,
       },
+      usaRates, // Include usaRates in the returned object
+      acnRates, // Include acnRates in the returned object
     }
   }, [
     selectedGarment,
@@ -125,7 +190,23 @@ export function GarmentCostCalculator() {
     customYarnCostPerKg,
     customGarmentWeightGrams,
     currentGarment,
+    usaMarginInput,
+    acnFactoryMarginInput,
+    maeknitAcnMarginInput,
+    usaKnittingCostPerHour,
+    usaLinkingCostPerHour,
+    usaQCHandFinishPerHour,
+    usaWashingSteamingPerHour,
+    usaLaborRatePerHour,
+    acnKnittingCostPerHour,
+    acnLinkingCostPerHour,
+    acnQCHandFinishPerHour,
+    acnWashingSteamingPerHour,
+    acnDHLShipCost,
+    acnMaeknitTariffPercent,
   ])
+
+  const { acnRates } = calculations
 
   return (
     <div className="space-y-6">
@@ -219,6 +300,211 @@ export function GarmentCostCalculator() {
 
           <Separator />
 
+          {/* Margin Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Margin Settings (%)</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="usa-margin">MAEKNIT (USA) Margin</Label>
+                <Input
+                  id="usa-margin"
+                  type="number"
+                  step="1"
+                  value={usaMarginInput ?? ""}
+                  onChange={(e) =>
+                    setUsaMarginInput(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="acn-factory-margin">ACN Factory Margin</Label>
+                <Input
+                  id="acn-factory-margin"
+                  type="number"
+                  step="1"
+                  value={acnFactoryMarginInput ?? ""}
+                  onChange={(e) =>
+                    setAcnFactoryMarginInput(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maeknit-acn-margin">MAEKNIT Margin (from ACN)</Label>
+                <Input
+                  id="maeknit-acn-margin"
+                  type="number"
+                  step="1"
+                  value={maeknitAcnMarginInput ?? ""}
+                  onChange={(e) =>
+                    setMaeknitAcnMarginInput(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                  }
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Separator />
+
+          {/* Fixed Rates Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Fixed Rates Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <h4 className="font-medium text-gray-700">MAEKNIT (USA) Rates</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="usa-knitting-cost">Knitting Cost ($/hr)</Label>
+                  <Input
+                    id="usa-knitting-cost"
+                    type="number"
+                    step="0.01"
+                    value={usaKnittingCostPerHour ?? ""}
+                    onChange={(e) =>
+                      setUsaKnittingCostPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="usa-linking-cost">Linking Cost ($/hr)</Label>
+                  <Input
+                    id="usa-linking-cost"
+                    type="number"
+                    step="0.01"
+                    value={usaLinkingCostPerHour ?? ""}
+                    onChange={(e) =>
+                      setUsaLinkingCostPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="usa-qc-cost">QC Hand Finish ($/hr)</Label>
+                  <Input
+                    id="usa-qc-cost"
+                    type="number"
+                    step="0.01"
+                    value={usaQCHandFinishPerHour ?? ""}
+                    onChange={(e) =>
+                      setUsaQCHandFinishPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="usa-washing-cost">Washing/Steaming ($/hr)</Label>
+                  <Input
+                    id="usa-washing-cost"
+                    type="number"
+                    step="0.01"
+                    value={usaWashingSteamingPerHour ?? ""}
+                    onChange={(e) =>
+                      setUsaWashingSteamingPerHour(
+                        e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0,
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="usa-labor-rate">Labor Rate ($/hr)</Label>
+                  <Input
+                    id="usa-labor-rate"
+                    type="number"
+                    step="0.01"
+                    value={usaLaborRatePerHour ?? ""}
+                    onChange={(e) =>
+                      setUsaLaborRatePerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              <h4 className="font-medium text-gray-700">ACN (Turkey) Rates</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="acn-knitting-cost">Knitting Cost ($/min)</Label>
+                  <Input
+                    id="acn-knitting-cost"
+                    type="number"
+                    step="0.01"
+                    value={acnKnittingCostPerHour ?? ""}
+                    onChange={(e) =>
+                      setAcnKnittingCostPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="acn-linking-cost">Linking Cost ($/min)</Label>
+                  <Input
+                    id="acn-linking-cost"
+                    type="number"
+                    step="0.01"
+                    value={acnLinkingCostPerHour ?? ""}
+                    onChange={(e) =>
+                      setAcnLinkingCostPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="acn-qc-cost">QC Hand Finish ($/hr)</Label>
+                  <Input
+                    id="acn-qc-cost"
+                    type="number"
+                    step="0.01"
+                    value={acnQCHandFinishPerHour ?? ""}
+                    onChange={(e) =>
+                      setAcnQCHandFinishPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="acn-washing-cost">Washing/Steaming ($/hr)</Label>
+                  <Input
+                    id="acn-washing-cost"
+                    type="number"
+                    step="0.01"
+                    value={acnWashingSteamingPerHour ?? ""}
+                    onChange={(e) =>
+                      setAcnWashingSteamingPerHour(
+                        e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0,
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="acn-dhl-ship-cost">DHL Shipping ($)</Label>
+                  <Input
+                    id="acn-dhl-ship-cost"
+                    type="number"
+                    step="0.01"
+                    value={acnDHLShipCost ?? ""}
+                    onChange={(e) =>
+                      setAcnDHLShipCost(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="acn-tariff-percent">MAEKNIT Tariff (%)</Label>
+                  <Input
+                    id="acn-tariff-percent"
+                    type="number"
+                    step="0.01"
+                    value={(acnMaeknitTariffPercent ?? "") === "" ? "" : (acnMaeknitTariffPercent ?? 0) * 100}
+                    onChange={(e) =>
+                      setAcnMaeknitTariffPercent(
+                        e.target.value === "" ? null : Number.parseFloat(e.target.value) / 100 || 0,
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Separator />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* MAEKNIT (USA) Costs */}
             <Card>
@@ -259,7 +545,7 @@ export function GarmentCostCalculator() {
                       <TableCell className="text-right">${calculations.usa.totalCost.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell>60% Margin</TableCell>
+                      <TableCell>{calculations.usa.marginPercent.toFixed(0)}% Margin</TableCell>
                       <TableCell className="text-right">${calculations.usa.margin.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow className="font-bold bg-blue-50">
@@ -310,19 +596,19 @@ export function GarmentCostCalculator() {
                       <TableCell className="text-right">${calculations.acn.directCost.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell>30% ACN Margin</TableCell>
+                      <TableCell>{calculations.acn.acnFactoryMarginPercent.toFixed(0)}% ACN Margin</TableCell>
                       <TableCell className="text-right">${calculations.acn.margin.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>DHL Shipping</TableCell>
-                      <TableCell className="text-right">${ACN_RATES.dhlShipCost.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">${acnRates.dhlShipCost.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow className="font-bold bg-gray-50">
                       <TableCell>MAEKNIT Cost (from ACN)</TableCell>
                       <TableCell className="text-right">${calculations.acn.maeknitCostFromACN.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell>15% Tariff</TableCell>
+                      <TableCell>{(acnRates.maeknitTariffPercent * 100).toFixed(0)}% Tariff</TableCell>
                       <TableCell className="text-right">${calculations.acn.maeknitTariff.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow className="font-bold bg-gray-50">
@@ -332,7 +618,7 @@ export function GarmentCostCalculator() {
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell>60% MAEKNIT Margin</TableCell>
+                      <TableCell>{calculations.acn.maeknitAcnMarginPercent.toFixed(0)}% MAEKNIT Margin</TableCell>
                       <TableCell className="text-right">${calculations.acn.maeknitMarginFromACN.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow className="font-bold bg-blue-50">
