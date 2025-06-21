@@ -123,8 +123,10 @@ export function GarmentCostCalculator() {
     const usaQCHandFinishCost = usaRates.qcHandFinishPerHour
 
     const usaTotalCost = usaYarnCost + usaMachineTimeCost + usaLinkingTimeCost + usaWashingCost + usaQCHandFinishCost
-    const usaMargin = usaTotalCost * usaMarginPercent
-    const usaTotalPrice = usaTotalCost + usaMargin
+
+    // Calculate USA Total Price using the provided formula: Selling Price = Cost / (1 - Margin)
+    const usaTotalPrice = usaMarginPercent < 1 ? usaTotalCost / (1 - usaMarginPercent) : usaTotalCost // Avoid division by zero or negative
+    const usaMargin = usaTotalPrice - usaTotalCost
 
     // --- ACN (Turkey) Calculations ---
     const acnMachineTimeCost = machineTime * acnRates.knittingCostPerHour
@@ -134,15 +136,22 @@ export function GarmentCostCalculator() {
     const acnQCHandFinishCost = acnRates.qcHandFinishPerHour
 
     const acnDirectCost = acnMachineTimeCost + acnLinkingTimeCost + acnYarnCost + acnWashingCost + acnQCHandFinishCost
-    const acnMargin = acnDirectCost * acnFactoryMarginPercent
-    const acnTotalPriceBeforeDHL = acnDirectCost + acnMargin
+
+    // Calculate ACN Total Price Before DHL using the provided formula
+    const acnTotalPriceBeforeDHL =
+      acnFactoryMarginPercent < 1 ? acnDirectCost / (1 - acnFactoryMarginPercent) : acnDirectCost
+    const acnMargin = acnTotalPriceBeforeDHL - acnDirectCost
+
     const acnTotalPriceWithDHL = acnTotalPriceBeforeDHL + acnRates.dhlShipCost
 
     const maeknitCostFromACN = acnTotalPriceWithDHL
     const maeknitTariff = maeknitCostFromACN * acnRates.maeknitTariffPercent
     const maeknitCostAfterTariff = maeknitCostFromACN + maeknitTariff
-    const maeknitMarginFromACN = maeknitCostAfterTariff * maeknitAcnMarginPercent
-    const maeknitTotalPriceFromACN = maeknitCostAfterTariff + maeknitMarginFromACN
+
+    // Calculate MAEKNIT Total Price from ACN using the provided formula
+    const maeknitTotalPriceFromACN =
+      maeknitAcnMarginPercent < 1 ? maeknitCostAfterTariff / (1 - maeknitAcnMarginPercent) : maeknitCostAfterTariff
+    const maeknitMarginFromACN = maeknitTotalPriceFromACN - maeknitCostAfterTariff
 
     return {
       usa: {
@@ -154,7 +163,8 @@ export function GarmentCostCalculator() {
         totalCost: usaTotalCost,
         margin: usaMargin,
         totalPrice: usaTotalPrice,
-        marginPercent: usaMarginPercent * 100, // Pass percentage for display
+        // Calculate margin percentage based on total price
+        marginPercent: usaTotalPrice !== 0 ? (usaMargin / usaTotalPrice) * 100 : 0,
       },
       acn: {
         machineTimeCost: acnMachineTimeCost,
@@ -171,8 +181,10 @@ export function GarmentCostCalculator() {
         maeknitCostAfterTariff: maeknitCostAfterTariff,
         maeknitMarginFromACN: maeknitMarginFromACN,
         maeknitTotalPriceFromACN: maeknitTotalPriceFromACN,
-        acnFactoryMarginPercent: acnFactoryMarginPercent * 100, // Pass percentage for display
-        maeknitAcnMarginPercent: maeknitAcnMarginPercent * 100, // Pass percentage for display
+        // Calculate margin percentages based on total prices
+        acnFactoryMarginPercent: acnTotalPriceBeforeDHL !== 0 ? (acnMargin / acnTotalPriceBeforeDHL) * 100 : 0,
+        maeknitAcnMarginPercent:
+          maeknitTotalPriceFromACN !== 0 ? (maeknitMarginFromACN / maeknitTotalPriceFromACN) * 100 : 0,
       },
       currentInputs: {
         machineTime,
@@ -206,6 +218,7 @@ export function GarmentCostCalculator() {
     acnMaeknitTariffPercent,
   ])
 
+  // Destructure usaRates and acnRates from calculations
   const { acnRates } = calculations
 
   return (
