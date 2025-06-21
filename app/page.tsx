@@ -46,10 +46,17 @@ type SavableSettings = {
   gradingPerWeek: number
 }
 
+// Declare MACHINE_CAPACITY variable
+const MACHINE_CAPACITY = {
+  "E72 Stoll": { dailyCapacity: 16, timePerGarment: 3 },
+  "E35 Stoll": { dailyCapacity: 10, timePerGarment: 1 },
+  "E18 SWG": { dailyCapacity: 16, timePerGarment: 1 },
+}
+
 export default function FinanceDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
-
+  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "matt@maeknit.io"]
   // Editable expense fields
   const [teamLabor, setTeamLabor] = useState(50684)
   const [rent, setRent] = useState(7000)
@@ -90,28 +97,24 @@ export default function FinanceDashboard() {
   const [materialCostMultiplier, setMaterialCostMultiplier] = useState(1)
   const [isSaving, setIsSaving] = useState(false)
 
-  const BASE_EXPENSES = {
-    teamLabor: teamLabor,
-    rent: rent,
-    electricity: electricity,
-    water: water,
-    materialCost: materialCost,
-    overhead: overhead,
-  }
-
-  const MACHINE_CAPACITY = {
-    "E7.2 STOLL": { timePerGarment: e72StollTime, dailyCapacity: e72StollCapacity },
-    "E3.5,2 STOLL": { timePerGarment: e35StollTime, dailyCapacity: e35StollCapacity },
-    "E18 SWG": { timePerGarment: e18SwgTime, dailyCapacity: e18SwgCapacity },
-  }
-
-  const SERVICE_PRICING = {
-    swatch: { cost: 75.88, price: swatchPrice, profit: swatchPrice - 75.88 },
-    sample: { cost: 327.02, price: samplePrice, profit: samplePrice - 327.02 },
-    grading: { cost: 1201.34, price: gradingPrice, profit: gradingPrice - 1201.34 },
-  }
-
   const calculations = useMemo(() => {
+    // Define BASE_EXPENSES and SERVICE_PRICING inside useMemo
+    // so they are re-calculated when their dependencies change.
+    const BASE_EXPENSES = {
+      teamLabor: teamLabor,
+      rent: rent,
+      electricity: electricity,
+      water: water,
+      materialCost: materialCost,
+      overhead: overhead,
+    }
+
+    const SERVICE_PRICING = {
+      swatch: { cost: 75.88, price: swatchPrice, profit: swatchPrice - 75.88 },
+      sample: { cost: 327.02, price: samplePrice, profit: samplePrice - 327.02 },
+      grading: { cost: 1201.34, price: gradingPrice, profit: gradingPrice - 1201.34 },
+    }
+
     // Apply cost multipliers to base expenses
     const adjustedExpenses = {
       teamLabor: BASE_EXPENSES.teamLabor * laborCostMultiplier,
@@ -125,7 +128,6 @@ export default function FinanceDashboard() {
     const monthlyExpenses = Object.values(adjustedExpenses).reduce((sum, expense) => sum + expense, 0)
     const annualExpenses = monthlyExpenses * 12
 
-    // Rest of the existing calculation logic remains the same...
     let dailyProductionCapacity = 0
     if (shifts === 1) {
       dailyProductionCapacity = developmentMix === "production-only" ? 42 : 16
@@ -163,6 +165,8 @@ export default function FinanceDashboard() {
       annualSwatches,
       annualSamples,
       annualGrading,
+      BASE_EXPENSES, // Include BASE_EXPENSES in the returned object if needed elsewhere
+      SERVICE_PRICING, // Include SERVICE_PRICING in the returned object if needed elsewhere
     }
   }, [
     shifts,
@@ -174,19 +178,22 @@ export default function FinanceDashboard() {
     laborCostMultiplier,
     rentMultiplier,
     materialCostMultiplier,
-    teamLabor,
-    rent,
-    electricity,
-    water,
-    materialCost,
-    overhead,
-    swatchPrice,
-    samplePrice,
-    gradingPrice,
+    teamLabor, // Dependency for BASE_EXPENSES
+    rent, // Dependency for BASE_EXPENSES
+    electricity, // Dependency for BASE_EXPENSES
+    water, // Dependency for BASE_EXPENSES
+    materialCost, // Dependency for BASE_EXPENSES
+    overhead, // Dependency for BASE_EXPENSES
+    swatchPrice, // Dependency for SERVICE_PRICING
+    samplePrice, // Dependency for SERVICE_PRICING
+    gradingPrice, // Dependency for SERVICE_PRICING
     e72StollCapacity,
     e35StollCapacity,
     e18SwgCapacity,
   ])
+
+  // Destructure BASE_EXPENSES and SERVICE_PRICING from calculations
+  const { BASE_EXPENSES, SERVICE_PRICING } = calculations
 
   const expenseBreakdown = [
     { name: "Team Labor", value: BASE_EXPENSES.teamLabor, color: "#8884d8" },
@@ -280,12 +287,20 @@ export default function FinanceDashboard() {
       }
 
       console.log("Settings Saved!", "Your financial dashboard settings have been successfully updated.")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error(
-        "Error Saving Settings",
-        error.message || "There was an issue saving your settings. Please try again.",
-      )
+    } catch (error: unknown) {
+      // Changed 'any' to 'unknown'
+      let errorMessage = "There was an issue saving your settings. Please try again."
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (
+        typeof error === "object" &&
+        error !== null &&
+        "error" in error &&
+        typeof (error as { error: string }).error === "string"
+      ) {
+        errorMessage = (error as { error: string }).error
+      }
+      console.error("Error Saving Settings", errorMessage)
     } finally {
       setIsSaving(false)
     }
@@ -294,7 +309,7 @@ export default function FinanceDashboard() {
   // Fetch settings on component mount if authorized
   useEffect(() => {
     const fetchSettings = async () => {
-      if (status === "authenticated" && session?.user?.email === "mahimul@maeknit.io") {
+      if (status === "authenticated" && AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
         try {
           const response = await fetch("/api/settings")
           if (!response.ok) {
@@ -345,7 +360,7 @@ export default function FinanceDashboard() {
   useEffect(() => {
     if (status === "loading") return // Do nothing while loading session
 
-    if (status === "unauthenticated" || session?.user?.email !== "mahimul@maeknit.io") {
+    if (status === "unauthenticated" || !AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
       router.push("/login")
     }
   }, [session, status, router])
@@ -361,13 +376,12 @@ export default function FinanceDashboard() {
 
   // If authenticated but not authorized, the useEffect above will redirect.
   // This ensures the dashboard content is only rendered for authorized users.
-  // Add the quick save button here
-  if (status === "unauthenticated" || session?.user?.email !== "mahimul@maeknit.io") {
+  if (status === "unauthenticated" || !AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
     return null // Or a simple message, as the redirect will happen
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:px-8 mx-auto space-y-6">
       <AuthStatus />
       <div className="max-w-full px-4 sm:px-6 lg:px-8 mx-auto space-y-6">
         <div className="text-center space-y-2">
@@ -464,7 +478,7 @@ export default function FinanceDashboard() {
               {/* Add the quick save button here */}
               <div className="px-6 pb-4 flex justify-end">
                 <Button onClick={handleSaveSettings} disabled={isSaving}>
-                  {isSaving ? "Saving..." : "Save"}
+                  {isSaving ? "Saving..." : "Save Settings"}
                 </Button>
               </div>
             </Card>
