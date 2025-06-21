@@ -33,7 +33,7 @@ type SavableSettings = {
   gradingPerWeek: number | null
 }
 
-const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "matt@maeknit.io", "matt.blodgett@praxisvcge.com"]
+const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "mattb@maeknit.io", "matt.blodgett@praxisvcge.com"]
 
 
 // GET handler to fetch settings

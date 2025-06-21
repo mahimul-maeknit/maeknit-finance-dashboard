@@ -28,7 +28,7 @@ const AUTHORIZED_EMAILS = [
   "elias@maeknit.io",
   "tech@maeknit.io",
   "intel@maeknit.io",
-  "matt@maeknit.io",
+  "mattb@maeknit.io",
   "matt.blodgett@praxisvcge.com",
 ]
 

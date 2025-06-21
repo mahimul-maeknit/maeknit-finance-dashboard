@@ -10,7 +10,7 @@ import { useEffect } from "react"
 export default function LoginPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "matt@maeknit.io", "matt.blodgett@praxisvcge.com"]
+  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "mattb@maeknit.io", "matt.blodgett@praxisvcge.com"]
 
   useEffect(() => {
     if (status === "authenticated") {
