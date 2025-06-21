@@ -27,7 +27,7 @@ type SavableSettings = {
   e18SwgTime: number
 }
 
-const ALLOWED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io"]
+const ALLOWED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io"]
 
 // GET handler
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

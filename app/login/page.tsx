@@ -10,7 +10,7 @@ import { useEffect } from "react"
 export default function LoginPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io"]
+  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io"]
 
 
   useEffect(() => {

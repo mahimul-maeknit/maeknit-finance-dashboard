@@ -103,7 +103,7 @@ export default function FinanceDashboard() {
     grading: { cost: 1201.34, price: gradingPrice, profit: gradingPrice - 1201.34 },
   }
 
-  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io"]
+  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io"]
 
   const calculations = useMemo(() => {
     // Apply cost multipliers to base expenses

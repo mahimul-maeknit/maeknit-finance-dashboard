@@ -2,11 +2,7 @@
 import NextAuth from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 
-const allowedEmails = [
-  "mahimul@maeknit.io",
-  "mallory@maeknit.io",
-  "elias@maeknit.io",
-]
+const allowedEmails = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io"]
 
 const handler = NextAuth({
   providers: [
