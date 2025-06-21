@@ -1,0 +1,1 @@
+// types/garment-settings.ts

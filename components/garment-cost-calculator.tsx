@@ -1,12 +1,32 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button" // Import Button
+import { useSession } from "next-auth/react" // Import useSession
+
+export type GarmentSavableSettings = {
+    usaMarginInput: number | null
+    acnFactoryMarginInput: number | null
+    maeknitAcnMarginInput: number | null
+    usaKnittingCostPerHour: number | null
+    usaLinkingCostPerHour: number | null
+    usaQCHandFinishPerHour: number | null
+    usaWashingSteamingPerHour: number | null
+    usaLaborRatePerHour: number | null
+    acnKnittingCostPerHour: number | null
+    acnLinkingCostPerHour: number | null
+    acnQCHandFinishPerHour: number | null
+    acnWashingSteamingPerHour: number | null
+    acnDHLShipCost: number | null
+    acnMaeknitTariffPercent: number | null
+  }
+  
 
 // Define garment types and their base metrics
 const GARMENT_TYPES = {
@@ -36,6 +56,17 @@ const INITIAL_ACN_FIXED_RATES = {
 }
 
 export function GarmentCostCalculator() {
+  const { data: session, status } = useSession()
+  const AUTHORIZED_EMAILS = [
+    "mahimul@maeknit.io",
+    "mallory@maeknit.io",
+    "elias@maeknit.io",
+    "tech@maeknit.io",
+    "intel@maeknit.io",
+    "matt@maeknit.io",
+    "matt.blodgett@praxisvcge.com",
+  ]
+
   const [selectedGarment, setSelectedGarment] = useState<keyof typeof GARMENT_TYPES>("4x1 top")
   const [customMachineTime, setCustomMachineTime] = useState<number | null>(null)
   const [customLinkingTime, setCustomLinkingTime] = useState<number | null>(null)
@@ -82,7 +113,149 @@ export function GarmentCostCalculator() {
     INITIAL_ACN_FIXED_RATES.maeknitTariffPercent,
   )
 
+  const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true) // New loading state
+
   const currentGarment = GARMENT_TYPES[selectedGarment]
+
+  // Function to reset all settings to their initial default values
+  const handleResetToDefaults = () => {
+    setUsaMarginInput(50)
+    setAcnFactoryMarginInput(30)
+    setMaeknitAcnMarginInput(33)
+    setUsaKnittingCostPerHour(INITIAL_USA_FIXED_RATES.knittingCostPerHour)
+    setUsaLinkingCostPerHour(INITIAL_USA_FIXED_RATES.linkingCostPerHour)
+    setUsaQCHandFinishPerHour(INITIAL_USA_FIXED_RATES.qcHandFinishPerHour)
+    setUsaWashingSteamingPerHour(INITIAL_USA_FIXED_RATES.washingSteamingPerHour)
+    setUsaLaborRatePerHour(INITIAL_USA_FIXED_RATES.laborRatePerHour)
+    setAcnKnittingCostPerHour(INITIAL_ACN_FIXED_RATES.knittingCostPerHour)
+    setAcnLinkingCostPerHour(INITIAL_ACN_FIXED_RATES.linkingCostPerHour)
+    setAcnQCHandFinishPerHour(INITIAL_ACN_FIXED_RATES.qcHandFinishPerHour)
+    setAcnWashingSteamingPerHour(INITIAL_ACN_FIXED_RATES.washingSteamingPerHour)
+    setAcnDHLShipCost(INITIAL_ACN_FIXED_RATES.dhlShipCost)
+    setAcnMaeknitTariffPercent(INITIAL_ACN_FIXED_RATES.maeknitTariffPercent)
+    setCustomMachineTime(null)
+    setCustomLinkingTime(null)
+    setCustomYarnCostPerKg(null)
+    setCustomGarmentWeightGrams(null)
+    console.log("Garment Cost Calculator settings reset to defaults.")
+  }
+
+  // Function to save settings to the database
+  const handleSaveSettings = async () => {
+    setIsSaving(true)
+    const settingsToSave: GarmentSavableSettings = {
+      usaMarginInput,
+      acnFactoryMarginInput,
+      maeknitAcnMarginInput,
+      usaKnittingCostPerHour,
+      usaLinkingCostPerHour,
+      usaQCHandFinishPerHour,
+      usaWashingSteamingPerHour,
+      usaLaborRatePerHour,
+      acnKnittingCostPerHour,
+      acnLinkingCostPerHour,
+      acnQCHandFinishPerHour,
+      acnWashingSteamingPerHour,
+      acnDHLShipCost,
+      acnMaeknitTariffPercent,
+    }
+
+    try {
+      const response = await fetch("/api/garment-calculator-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(settingsToSave),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to save garment calculator settings")
+      }
+
+      console.log("Garment Cost Calculator Settings Saved!", "Your settings have been successfully updated.")
+    } catch (error: unknown) {
+      let errorMessage = "There was an issue saving your settings. Please try again."
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (
+        typeof error === "object" &&
+        error !== null &&
+        "error" in error &&
+        typeof (error as { error: string }).error === "string"
+      ) {
+        errorMessage = (error as { error: string }).error
+      }
+      console.error("Error Saving Garment Cost Calculator Settings", errorMessage)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Fetch settings on component mount if authorized
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (status === "authenticated" && AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
+        try {
+          const response = await fetch("/api/garment-calculator-settings")
+          if (!response.ok) {
+            throw new Error("Failed to fetch garment calculator settings")
+          }
+          const fetchedSettings: GarmentSavableSettings = await response.json()
+
+          // Update state with fetched settings if they exist
+          if (Object.keys(fetchedSettings).length > 0) {
+            setUsaMarginInput(fetchedSettings.usaMarginInput ?? 50)
+            setAcnFactoryMarginInput(fetchedSettings.acnFactoryMarginInput ?? 30)
+            setMaeknitAcnMarginInput(fetchedSettings.maeknitAcnMarginInput ?? 33)
+            setUsaKnittingCostPerHour(
+              fetchedSettings.usaKnittingCostPerHour ?? INITIAL_USA_FIXED_RATES.knittingCostPerHour,
+            )
+            setUsaLinkingCostPerHour(
+              fetchedSettings.usaLinkingCostPerHour ?? INITIAL_USA_FIXED_RATES.linkingCostPerHour,
+            )
+            setUsaQCHandFinishPerHour(
+              fetchedSettings.usaQCHandFinishPerHour ?? INITIAL_USA_FIXED_RATES.qcHandFinishPerHour,
+            )
+            setUsaWashingSteamingPerHour(
+              fetchedSettings.usaWashingSteamingPerHour ?? INITIAL_USA_FIXED_RATES.washingSteamingPerHour,
+            )
+            setUsaLaborRatePerHour(fetchedSettings.usaLaborRatePerHour ?? INITIAL_USA_FIXED_RATES.laborRatePerHour)
+            setAcnKnittingCostPerHour(
+              fetchedSettings.acnKnittingCostPerHour ?? INITIAL_ACN_FIXED_RATES.knittingCostPerHour,
+            )
+            setAcnLinkingCostPerHour(
+              fetchedSettings.acnLinkingCostPerHour ?? INITIAL_ACN_FIXED_RATES.linkingCostPerHour,
+            )
+            setAcnQCHandFinishPerHour(
+              fetchedSettings.acnQCHandFinishPerHour ?? INITIAL_ACN_FIXED_RATES.qcHandFinishPerHour,
+            )
+            setAcnWashingSteamingPerHour(
+              fetchedSettings.acnWashingSteamingPerHour ?? INITIAL_ACN_FIXED_RATES.washingSteamingPerHour,
+            )
+            setAcnDHLShipCost(fetchedSettings.acnDHLShipCost ?? INITIAL_ACN_FIXED_RATES.dhlShipCost)
+            setAcnMaeknitTariffPercent(
+              fetchedSettings.acnMaeknitTariffPercent ?? INITIAL_ACN_FIXED_RATES.maeknitTariffPercent,
+            )
+            console.log("Garment Cost Calculator Settings Loaded!", "Previous settings have been loaded.")
+          }
+        } catch (error) {
+          console.error("Error fetching garment calculator settings:", error)
+          console.error(
+            "Error Loading Garment Cost Calculator Settings",
+            "Could not load previous settings. Using default values.",
+          )
+        } finally {
+          setIsLoading(false)
+        }
+      } else if (status !== "loading") {
+        setIsLoading(false) // If not authenticated or authorized, stop loading and use defaults
+      }
+    }
+    fetchSettings()
+  }, [session, status])
 
   // UseMemo to calculate costs based on selected garment and custom inputs
   const calculations = useMemo(() => {
@@ -220,6 +393,14 @@ export function GarmentCostCalculator() {
 
   // Destructure usaRates and acnRates from calculations
   const { acnRates } = calculations
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[300px] items-center justify-center bg-gray-50">
+        <p className="text-lg text-gray-600">Loading garment calculator settings...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -515,6 +696,15 @@ export function GarmentCostCalculator() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleResetToDefaults}>
+              Reset to Defaults
+            </Button>
+            <Button onClick={handleSaveSettings} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Settings"}
+            </Button>
+          </div>
 
           <Separator />
 
