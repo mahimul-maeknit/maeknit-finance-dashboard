@@ -17,6 +17,7 @@ import AuthStatus from "@/components/auth-status"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { GarmentCostCalculator } from "@/components/garment-cost-calculator" // Import the new component
 
 // Define a type for the savable settings
 type SavableSettings = {
@@ -63,6 +64,7 @@ export default function FinanceDashboard() {
     "tech@maeknit.io",
     "intel@maeknit.io",
     "matt@maeknit.io",
+    "matt.blodgett@praxisvcge.com",
   ]
 
   // Editable expense fields
@@ -394,484 +396,504 @@ export default function FinanceDashboard() {
       <AuthStatus />
       <div className="max-w-full px-4 sm:px-6 lg:px-8 mx-auto space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">NY Manufacturing Financial Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600">Interactive Financial Modeling for MAEKNIT</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">MAEKNIT NY Manufacturing Dashboard</h1>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="finance" className="space-y-6">
           <TabsList className="flex flex-wrap justify-center w-full gap-2">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="scenarios">Scenarios</TabsTrigger>
-            <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
-            <TabsTrigger value="planning">Planning</TabsTrigger>
-            <TabsTrigger value="sensitivity">Sensitivity</TabsTrigger>
-            <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="finance">Finance Dashboard</TabsTrigger>
+            <TabsTrigger value="garment-cost">Garment Cost Calculator</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            {/* Input Controls */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Scenario Parameters</CardTitle>
-                <CardDescription>Adjust these parameters to see real-time financial projections</CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="shifts">Number of Shifts</Label>
-                  <Select
-                    value={shifts?.toString() ?? ""}
-                    onValueChange={(value) => setShifts(value === "" ? null : Number.parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 Shift</SelectItem>
-                      <SelectItem value="2">2 Shifts</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <TabsContent value="finance" className="space-y-6">
+            {/* NESTED TABS FOR FINANCE DASHBOARD */}
+            <Tabs defaultValue="overview" className="space-y-6">
+              <TabsList className="flex flex-wrap justify-center w-full gap-2">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="scenarios">Scenarios</TabsTrigger>
+                <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
+                <TabsTrigger value="planning">Planning</TabsTrigger>
+                <TabsTrigger value="sensitivity">Sensitivity</TabsTrigger>
+                <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+              </TabsList>
 
-                <div className="space-y-2">
-                  <Label htmlFor="price">Avg Garment Price ($)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    value={avgGarmentPrice ?? ""}
-                    onChange={(e) =>
-                      setAvgGarmentPrice(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="swatches">Swatches/Week</Label>
-                  <Input
-                    id="swatches"
-                    type="number"
-                    value={swatchesPerWeek ?? ""}
-                    onChange={(e) =>
-                      setSwatchesPerWeek(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="samples">Samples/Week</Label>
-                  <Input
-                    id="samples"
-                    type="number"
-                    value={samplesPerWeek ?? ""}
-                    onChange={(e) =>
-                      setSamplesPerWeek(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="grading">Grading/Week</Label>
-                  <Input
-                    id="grading"
-                    type="number"
-                    value={gradingPerWeek ?? ""}
-                    onChange={(e) =>
-                      setGradingPerWeek(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Development Mix</Label>
-                  <Select
-                    value={developmentMix ?? ""}
-                    onValueChange={(value) => setDevelopmentMix(value === "" ? null : value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="production-only">Production Only</SelectItem>
-                      <SelectItem value="worst">With Development (Conservative)</SelectItem>
-                      <SelectItem value="best">With Development (Optimistic)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-              {/* Add the quick save button here */}
-              <div className="px-6 pb-4 flex justify-end">
-                <Button onClick={handleSaveSettings} disabled={isSaving}>
-                  {isSaving ? "Saving..." : "Save Settings"}
-                </Button>
-              </div>
-            </Card>
-
-            {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Annual Revenue</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">${calculations.totalRevenue.toLocaleString()}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Production: ${calculations.productionRevenue.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Development: ${calculations.developmentRevenue.toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Annual Expenses</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-600">${calculations.annualExpenses.toLocaleString()}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Monthly: ${calculations.monthlyExpenses.toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Annual Profit</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${calculations.profit > 0 ? "text-green-600" : "text-red-600"}`}>
-                    ${calculations.profit.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">Margin: {calculations.profitMargin.toFixed(1)}%</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Production Capacity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {calculations.annualProductionCapacity.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Daily: {calculations.dailyProductionCapacity} garments
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {shifts} shift{shifts !== null && shifts > 1 ? "s" : ""}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Revenue vs Expenses Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue vs Expenses Comparison</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart
-                    data={[
-                      { name: "Revenue", value: calculations.totalRevenue, fill: "#10b981" },
-                      { name: "Expenses", value: calculations.annualExpenses, fill: "#ef4444" },
-                      { name: "Profit", value: calculations.profit, fill: "#3b82f6" },
-                    ]}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`} />
-                    <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
-                    <Bar dataKey="value" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="scenarios" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Scenario Comparison</CardTitle>
-                <CardDescription>Compare different operational scenarios</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={scenarioComparison} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="scenario" angle={-45} textAnchor="end" height={80} interval={0} />
-                    <YAxis tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`} />
-                    <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
-                    <Bar dataKey="revenue" fill="#10b981" name="Revenue" />
-                    <Bar dataKey="expenses" fill="#ef4444" name="Expenses" />
-                    <Bar dataKey="profit" fill="#3b82f6" name="Profit" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Development Services Annual Volume</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Swatches</span>
-                    <Badge variant="secondary">{calculations.annualSwatches} units</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Samples</span>
-                    <Badge variant="secondary">{calculations.annualSamples} units</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Grading</span>
-                    <Badge variant="secondary">{calculations.annualGrading} units</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Service Profitability</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Swatch Margin</span>
-                      <span className="font-medium">
-                        {((SERVICE_PRICING.swatch.profit / SERVICE_PRICING.swatch.price) * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Sample Margin</span>
-                      <span className="font-medium">
-                        {((SERVICE_PRICING.sample.profit / SERVICE_PRICING.sample.price) * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Grading Margin</span>
-                      <span className="font-medium">
-                        {((SERVICE_PRICING.grading.profit / SERVICE_PRICING.grading.price) * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="breakdown" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monthly Expense Breakdown</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={expenseBreakdown}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              <TabsContent value="overview" className="space-y-6">
+                {/* Input Controls */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Scenario Parameters</CardTitle>
+                    <CardDescription>Adjust these parameters to see real-time financial projections</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="shifts">Number of Shifts</Label>
+                      <Select
+                        value={shifts?.toString() ?? ""}
+                        onValueChange={(value) => setShifts(value === "" ? null : Number.parseInt(value))}
                       >
-                        {expenseBreakdown.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 Shift</SelectItem>
+                          <SelectItem value="2">2 Shifts</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Revenue Sources</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={revenueBreakdown}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Avg Garment Price ($)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        value={avgGarmentPrice ?? ""}
+                        onChange={(e) =>
+                          setAvgGarmentPrice(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="swatches">Swatches/Week</Label>
+                      <Input
+                        id="swatches"
+                        type="number"
+                        value={swatchesPerWeek ?? ""}
+                        onChange={(e) =>
+                          setSwatchesPerWeek(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="samples">Samples/Week</Label>
+                      <Input
+                        id="samples"
+                        type="number"
+                        value={samplesPerWeek ?? ""}
+                        onChange={(e) =>
+                          setSamplesPerWeek(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="grading">Grading/Week</Label>
+                      <Input
+                        id="grading"
+                        type="number"
+                        value={gradingPerWeek ?? ""}
+                        onChange={(e) =>
+                          setGradingPerWeek(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Development Mix</Label>
+                      <Select
+                        value={developmentMix ?? ""}
+                        onValueChange={(value) => setDevelopmentMix(value === "" ? null : value)}
                       >
-                        {revenueBreakdown.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="production-only">Production Only</SelectItem>
+                          <SelectItem value="worst">With Development (Conservative)</SelectItem>
+                          <SelectItem value="best">With Development (Optimistic)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                  {/* Add the quick save button here */}
+                  <div className="px-6 pb-4 flex justify-end">
+                    <Button onClick={handleSaveSettings} disabled={isSaving}>
+                      {isSaving ? "Saving..." : "Save Settings"}
+                    </Button>
+                  </div>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Detailed Expense Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {Object.entries(BASE_EXPENSES).map(([key, value]) => (
-                    <div key={key} className="flex justify-between items-center py-2 border-b">
-                      <span className="font-medium capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</span>
-                      <div className="text-right">
-                        <div className="font-bold">${value.toLocaleString()}/month</div>
-                        <div className="text-sm text-gray-500">${(value * 12).toLocaleString()}/year</div>
+                {/* Key Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600">Annual Revenue</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-green-600">
+                        ${calculations.totalRevenue.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Production: ${calculations.productionRevenue.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Development: ${calculations.developmentRevenue.toLocaleString()}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600">Annual Expenses</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-red-600">
+                        ${calculations.annualExpenses.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Monthly: ${calculations.monthlyExpenses.toLocaleString()}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600">Annual Profit</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div
+                        className={`text-2xl font-bold ${calculations.profit > 0 ? "text-green-600" : "text-red-600"}`}
+                      >
+                        ${calculations.profit.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">Margin: {calculations.profitMargin.toFixed(1)}%</div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600">Production Capacity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {calculations.annualProductionCapacity.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Daily: {calculations.dailyProductionCapacity} garments
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {shifts} shift{shifts !== null && shifts > 1 ? "s" : ""}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Revenue vs Expenses Chart */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Revenue vs Expenses Comparison</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart
+                        data={[
+                          { name: "Revenue", value: calculations.totalRevenue, fill: "#10b981" },
+                          { name: "Expenses", value: calculations.annualExpenses, fill: "#ef4444" },
+                          { name: "Profit", value: calculations.profit, fill: "#3b82f6" },
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`} />
+                        <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
+                        <Bar dataKey="value" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="scenarios" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Scenario Comparison</CardTitle>
+                    <CardDescription>Compare different operational scenarios</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={scenarioComparison} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="scenario" angle={-45} textAnchor="end" height={80} interval={0} />
+                        <YAxis tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`} />
+                        <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
+                        <Bar dataKey="revenue" fill="#10b981" name="Revenue" />
+                        <Bar dataKey="expenses" fill="#ef4444" name="Expenses" />
+                        <Bar dataKey="profit" fill="#3b82f6" name="Profit" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Development Services Annual Volume</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Swatches</span>
+                        <Badge variant="secondary">{calculations.annualSwatches} units</Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Samples</span>
+                        <Badge variant="secondary">{calculations.annualSamples} units</Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Grading</span>
+                        <Badge variant="secondary">{calculations.annualGrading} units</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Service Profitability</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Swatch Margin</span>
+                          <span className="font-medium">
+                            {((SERVICE_PRICING.swatch.profit / SERVICE_PRICING.swatch.price) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Sample Margin</span>
+                          <span className="font-medium">
+                            {((SERVICE_PRICING.sample.profit / SERVICE_PRICING.sample.price) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Grading Margin</span>
+                          <span className="font-medium">
+                            {((SERVICE_PRICING.grading.profit / SERVICE_PRICING.grading.price) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="breakdown" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Monthly Expense Breakdown</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={expenseBreakdown}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {expenseBreakdown.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Revenue Sources</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={revenueBreakdown}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {revenueBreakdown.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Detailed Expense Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {Object.entries(BASE_EXPENSES).map(([key, value]) => (
+                        <div key={key} className="flex justify-between items-center py-2 border-b">
+                          <span className="font-medium capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</span>
+                          <div className="text-right">
+                            <div className="font-bold">${value.toLocaleString()}/month</div>
+                            <div className="text-sm text-gray-500">${(value * 12).toLocaleString()}/year</div>
+                          </div>
+                        </div>
+                      ))}
+                      <Separator />
+                      <div className="flex justify-between items-center py-2 font-bold text-lg">
+                        <span>Total</span>
+                        <div className="text-right">
+                          <div>${calculations.monthlyExpenses.toLocaleString()}/month</div>
+                          <div className="text-sm">${calculations.annualExpenses.toLocaleString()}/year</div>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                  <Separator />
-                  <div className="flex justify-between items-center py-2 font-bold text-lg">
-                    <span>Total</span>
-                    <div className="text-right">
-                      <div>${calculations.monthlyExpenses.toLocaleString()}/month</div>
-                      <div className="text-sm">${calculations.annualExpenses.toLocaleString()}/year</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          <TabsContent value="planning" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Machine Capacity Planning</CardTitle>
-                <CardDescription>Current machine utilization and capacity</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {Object.entries(MACHINE_CAPACITY).map(([machine, data]) => (
-                    <div key={machine} className="p-4 border rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-medium">{machine}</h4>
-                        <Badge>{data.dailyCapacity} garments/day</Badge>
+              <TabsContent value="planning" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Machine Capacity Planning</CardTitle>
+                    <CardDescription>Current machine utilization and capacity</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {Object.entries(MACHINE_CAPACITY).map(([machine, data]) => (
+                        <div key={machine} className="p-4 border rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <h4 className="font-medium">{machine}</h4>
+                            <Badge>{data.dailyCapacity} garments/day</Badge>
+                          </div>
+                          <div className="text-sm text-gray-600">Time per garment: {data.timePerGarment} minutes</div>
+                          <div className="text-sm text-gray-600">
+                            Annual capacity: {(data.dailyCapacity * 365).toLocaleString()} garments
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Break-even Analysis</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <div className="text-sm text-blue-600 font-medium">Break-even Revenue</div>
+                        <div className="text-2xl font-bold text-blue-800">
+                          ${calculations.annualExpenses.toLocaleString()}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">Time per garment: {data.timePerGarment} minutes</div>
-                      <div className="text-sm text-gray-600">
-                        Annual capacity: {(data.dailyCapacity * 365).toLocaleString()} garments
+                      <div className="p-4 bg-green-50 rounded-lg">
+                        <div className="text-sm text-green-600 font-medium">Break-even Units (Production)</div>
+                        <div className="text-2xl font-bold text-green-800">
+                          {Math.ceil(calculations.annualExpenses / (avgGarmentPrice ?? 1)).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="p-4 bg-purple-50 rounded-lg">
+                        <div className="text-sm text-purple-600 font-medium">Safety Margin</div>
+                        <div className="text-2xl font-bold text-purple-800">
+                          {(
+                            ((calculations.totalRevenue - calculations.annualExpenses) / calculations.totalRevenue) *
+                            100
+                          ).toFixed(1)}
+                          %
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Break-even Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <div className="text-sm text-blue-600 font-medium">Break-even Revenue</div>
-                    <div className="text-2xl font-bold text-blue-800">
-                      ${calculations.annualExpenses.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <div className="text-sm text-green-600 font-medium">Break-even Units (Production)</div>
-                    <div className="text-2xl font-bold text-green-800">
-                      {Math.ceil(calculations.annualExpenses / (avgGarmentPrice ?? 1)).toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <div className="text-sm text-purple-600 font-medium">Safety Margin</div>
-                    <div className="text-2xl font-bold text-purple-800">
-                      {(
-                        ((calculations.totalRevenue - calculations.annualExpenses) / calculations.totalRevenue) *
-                        100
-                      ).toFixed(1)}
-                      %
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              <TabsContent value="sensitivity" className="space-y-6">
+                <SensitivityAnalysis
+                  laborCostMultiplier={laborCostMultiplier}
+                  setLaborCostMultiplier={setLaborCostMultiplier}
+                  rentMultiplier={rentMultiplier}
+                  setRentMultiplier={setRentMultiplier}
+                  materialCostMultiplier={materialCostMultiplier}
+                  setMaterialCostMultiplier={setMaterialCostMultiplier}
+                  baseProfit={
+                    calculations.totalRevenue -
+                    (BASE_EXPENSES.teamLabor +
+                      BASE_EXPENSES.rent +
+                      BASE_EXPENSES.electricity +
+                      BASE_EXPENSES.water +
+                      BASE_EXPENSES.materialCost +
+                      BASE_EXPENSES.overhead) *
+                      12
+                  }
+                  currentProfit={calculations.profit}
+                />
+
+                <MachineROICalculator />
+              </TabsContent>
+
+              <TabsContent value="cashflow" className="space-y-6">
+                <CashFlowProjection
+                  monthlyRevenue={calculations.totalRevenue / 12}
+                  monthlyExpenses={calculations.monthlyExpenses}
+                />
+              </TabsContent>
+              <TabsContent value="settings" className="space-y-6">
+                <SettingsPanel
+                  teamLabor={teamLabor}
+                  setTeamLabor={setTeamLabor}
+                  rent={rent}
+                  setRent={setRent}
+                  electricity={electricity}
+                  setElectricity={setElectricity}
+                  water={water}
+                  setWater={setWater}
+                  materialCost={materialCost}
+                  setMaterialCost={setMaterialCost}
+                  overhead={overhead}
+                  setOverhead={setOverhead}
+                  waterRate={waterRate}
+                  setWaterRate={setWaterRate}
+                  electricityRate={electricityRate}
+                  setElectricityRate={setElectricityRate}
+                  laborRate={laborRate}
+                  setLaborRate={setLaborRate}
+                  swatchPrice={swatchPrice}
+                  setSwatchPrice={setSwatchPrice}
+                  samplePrice={samplePrice}
+                  setSamplePrice={setSamplePrice}
+                  gradingPrice={gradingPrice}
+                  setGradingPrice={setGradingPrice}
+                  e72StollCapacity={e72StollCapacity}
+                  setE72StollCapacity={setE72StollCapacity}
+                  e35StollCapacity={e35StollCapacity}
+                  setE35StollCapacity={setE35StollCapacity}
+                  e18SwgCapacity={e18SwgCapacity}
+                  setE18SwgCapacity={setE18SwgCapacity}
+                  e72StollTime={e72StollTime}
+                  setE72StollTime={setE72StollTime}
+                  e35StollTime={e35StollTime}
+                  setE35StollTime={setE35StollTime}
+                  e18SwgTime={e18SwgTime}
+                  setE18SwgTime={setE18SwgTime}
+                  onSave={handleSaveSettings} // Pass the save function
+                />
+              </TabsContent>
+            </Tabs>
+            {/* END NESTED TABS FOR FINANCE DASHBOARD */}
           </TabsContent>
 
-          <TabsContent value="sensitivity" className="space-y-6">
-            <SensitivityAnalysis
-              laborCostMultiplier={laborCostMultiplier}
-              setLaborCostMultiplier={setLaborCostMultiplier}
-              rentMultiplier={rentMultiplier}
-              setRentMultiplier={setRentMultiplier}
-              materialCostMultiplier={materialCostMultiplier}
-              setMaterialCostMultiplier={setMaterialCostMultiplier}
-              baseProfit={
-                calculations.totalRevenue -
-                (BASE_EXPENSES.teamLabor +
-                  BASE_EXPENSES.rent +
-                  BASE_EXPENSES.electricity +
-                  BASE_EXPENSES.water +
-                  BASE_EXPENSES.materialCost +
-                  BASE_EXPENSES.overhead) *
-                  12
-              }
-              currentProfit={calculations.profit}
-            />
-
-            <MachineROICalculator />
-          </TabsContent>
-
-          <TabsContent value="cashflow" className="space-y-6">
-            <CashFlowProjection
-              monthlyRevenue={calculations.totalRevenue / 12}
-              monthlyExpenses={calculations.monthlyExpenses}
-            />
-          </TabsContent>
-          <TabsContent value="settings" className="space-y-6">
-            <SettingsPanel
-              teamLabor={teamLabor}
-              setTeamLabor={setTeamLabor}
-              rent={rent}
-              setRent={setRent}
-              electricity={electricity}
-              setElectricity={setElectricity}
-              water={water}
-              setWater={setWater}
-              materialCost={materialCost}
-              setMaterialCost={setMaterialCost}
-              overhead={overhead}
-              setOverhead={setOverhead}
-              waterRate={waterRate}
-              setWaterRate={setWaterRate}
-              electricityRate={electricityRate}
-              setElectricityRate={setElectricityRate}
-              laborRate={laborRate}
-              setLaborRate={setLaborRate}
-              swatchPrice={swatchPrice}
-              setSwatchPrice={setSwatchPrice}
-              samplePrice={samplePrice}
-              setSamplePrice={setSamplePrice}
-              gradingPrice={gradingPrice}
-              setGradingPrice={setGradingPrice}
-              e72StollCapacity={e72StollCapacity}
-              setE72StollCapacity={setE72StollCapacity}
-              e35StollCapacity={e35StollCapacity}
-              setE35StollCapacity={setE35StollCapacity}
-              e18SwgCapacity={e18SwgCapacity}
-              setE18SwgCapacity={setE18SwgCapacity}
-              e72StollTime={e72StollTime}
-              setE72StollTime={setE72StollTime}
-              e35StollTime={e35StollTime}
-              setE35StollTime={setE35StollTime}
-              e18SwgTime={e18SwgTime}
-              setE18SwgTime={setE18SwgTime}
-              onSave={handleSaveSettings} // Pass the save function
-            />
+          <TabsContent value="garment-cost" className="space-y-6">
+            <GarmentCostCalculator />
           </TabsContent>
         </Tabs>
       </div>

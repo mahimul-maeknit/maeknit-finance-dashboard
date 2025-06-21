@@ -33,13 +33,16 @@ type SavableSettings = {
   gradingPerWeek: number | null
 }
 
+const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "matt@maeknit.io", "matt.blodgett@praxisvcge.com"]
+
+
 // GET handler to fetch settings
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: Request) {
   const session = await getServerSession()
 
   // Authorization check
-  if (!session || session.user?.email !== "mahimul@maeknit.io") {
+  if (!session || !AUTHORIZED_EMAILS.includes(session.user?.email || "")) {
     return new NextResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
   }
 
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
   const session = await getServerSession()
 
   // Authorization check
-  if (!session || session.user?.email !== "mahimul@maeknit.io") {
+  if (!session || !AUTHORIZED_EMAILS.includes(session.user?.email || "")) {
     return new NextResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
   }
 
