@@ -103,6 +103,8 @@ export default function FinanceDashboard() {
     grading: { cost: 1201.34, price: gradingPrice, profit: gradingPrice - 1201.34 },
   }
 
+  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io"]
+
   const calculations = useMemo(() => {
     // Apply cost multipliers to base expenses
     const adjustedExpenses = {
@@ -277,7 +279,7 @@ export default function FinanceDashboard() {
   // Fetch settings on component mount if authorized
   useEffect(() => {
     const fetchSettings = async () => {
-      if (status === "authenticated" && session?.user?.email === "mahimul@maeknit.io") {
+      if (status === "authenticated" && AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
         try {
           const response = await fetch("/api/settings")
           if (!response.ok) {
@@ -321,7 +323,7 @@ export default function FinanceDashboard() {
   useEffect(() => {
     if (status === "loading") return // Do nothing while loading session
 
-    if (status === "unauthenticated" || session?.user?.email !== "mahimul@maeknit.io") {
+    if (status === "unauthenticated" || !AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
       router.push("/login")
     }
   }, [session, status, router])
@@ -337,9 +339,10 @@ export default function FinanceDashboard() {
 
   // If authenticated but not authorized, the useEffect above will redirect.
   // This ensures the dashboard content is only rendered for authorized users.
-  if (status === "unauthenticated" || session?.user?.email !== "mahimul@maeknit.io") {
-    return null // Or a simple message, as the redirect will happen
+  if (status === "unauthenticated" || !AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
+    return null
   }
+  
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">

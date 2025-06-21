@@ -10,11 +10,13 @@ import { useEffect } from "react"
 export default function LoginPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io"]
+
 
   useEffect(() => {
     if (status === "authenticated") {
       // Check if the authenticated user is authorized
-      if (session?.user?.email === "mahimul@maeknit.io") {
+      if (AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
         router.push("/") // Redirect to dashboard if authorized
       } else {
         // If authenticated but not authorized, show an error or redirect to a specific unauthorized page
@@ -49,11 +51,11 @@ export default function LoginPage() {
               Sign in with Google
             </Button>
           )}
-          {status === "authenticated" && session?.user?.email !== "mahimul@maeknit.io" && (
+          {status === "authenticated" && !AUTHORIZED_EMAILS.includes(session?.user?.email || "") && (
             <div className="text-red-600 font-medium">
-              Access Denied: Your email ({session.user?.email}) is not authorized.
+                Access Denied: Your email ({session.user?.email}) is not authorized.
             </div>
-          )}
+            )}
         </CardContent>
       </Card>
     </div>
