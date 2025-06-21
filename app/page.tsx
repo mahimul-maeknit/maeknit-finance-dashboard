@@ -16,6 +16,7 @@ import { SettingsPanel } from "@/components/settings-panel"
 import AuthStatus from "@/components/auth-status"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 
 // Define a type for the savable settings
 type SavableSettings = {
@@ -37,6 +38,12 @@ type SavableSettings = {
   e72StollTime: number
   e35StollTime: number
   e18SwgTime: number
+  shifts: number
+  avgGarmentPrice: number
+  developmentMix: string
+  swatchesPerWeek: number
+  samplesPerWeek: number
+  gradingPerWeek: number
 }
 
 export default function FinanceDashboard() {
@@ -81,6 +88,7 @@ export default function FinanceDashboard() {
   const [laborCostMultiplier, setLaborCostMultiplier] = useState(1)
   const [rentMultiplier, setRentMultiplier] = useState(1)
   const [materialCostMultiplier, setMaterialCostMultiplier] = useState(1)
+  const [isSaving, setIsSaving] = useState(false)
 
   const BASE_EXPENSES = {
     teamLabor: teamLabor,
@@ -102,8 +110,6 @@ export default function FinanceDashboard() {
     sample: { cost: 327.02, price: samplePrice, profit: samplePrice - 327.02 },
     grading: { cost: 1201.34, price: gradingPrice, profit: gradingPrice - 1201.34 },
   }
-
-  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io"]
 
   const calculations = useMemo(() => {
     // Apply cost multipliers to base expenses
@@ -231,6 +237,7 @@ export default function FinanceDashboard() {
 
   // Function to save settings to the database
   const handleSaveSettings = async () => {
+    setIsSaving(true)
     const settingsToSave: SavableSettings = {
       teamLabor,
       rent,
@@ -250,6 +257,12 @@ export default function FinanceDashboard() {
       e72StollTime,
       e35StollTime,
       e18SwgTime,
+      shifts,
+      avgGarmentPrice,
+      developmentMix,
+      swatchesPerWeek,
+      samplesPerWeek,
+      gradingPerWeek,
     }
 
     try {
@@ -273,13 +286,15 @@ export default function FinanceDashboard() {
         "Error Saving Settings",
         error.message || "There was an issue saving your settings. Please try again.",
       )
+    } finally {
+      setIsSaving(false)
     }
   }
 
   // Fetch settings on component mount if authorized
   useEffect(() => {
     const fetchSettings = async () => {
-      if (status === "authenticated" && AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
+      if (status === "authenticated" && session?.user?.email === "mahimul@maeknit.io") {
         try {
           const response = await fetch("/api/settings")
           if (!response.ok) {
@@ -308,6 +323,13 @@ export default function FinanceDashboard() {
             setE72StollTime(fetchedSettings.e72StollTime)
             setE35StollTime(fetchedSettings.e35StollTime)
             setE18SwgTime(fetchedSettings.e18SwgTime)
+            // Add fallback for newly added scenario parameters
+            setShifts(fetchedSettings.shifts || 1)
+            setAvgGarmentPrice(fetchedSettings.avgGarmentPrice || 150)
+            setDevelopmentMix(fetchedSettings.developmentMix || "worst")
+            setSwatchesPerWeek(fetchedSettings.swatchesPerWeek || 14)
+            setSamplesPerWeek(fetchedSettings.samplesPerWeek || 4)
+            setGradingPerWeek(fetchedSettings.gradingPerWeek || 2)
             console.log("Settings Loaded!", "Previous settings have been loaded.")
           }
         } catch (error) {
@@ -323,7 +345,7 @@ export default function FinanceDashboard() {
   useEffect(() => {
     if (status === "loading") return // Do nothing while loading session
 
-    if (status === "unauthenticated" || !AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
+    if (status === "unauthenticated" || session?.user?.email !== "mahimul@maeknit.io") {
       router.push("/login")
     }
   }, [session, status, router])
@@ -339,10 +361,10 @@ export default function FinanceDashboard() {
 
   // If authenticated but not authorized, the useEffect above will redirect.
   // This ensures the dashboard content is only rendered for authorized users.
-  if (status === "unauthenticated" || !AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
-    return null
+  // Add the quick save button here
+  if (status === "unauthenticated" || session?.user?.email !== "mahimul@maeknit.io") {
+    return null // Or a simple message, as the redirect will happen
   }
-  
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
@@ -439,6 +461,12 @@ export default function FinanceDashboard() {
                   </Select>
                 </div>
               </CardContent>
+              {/* Add the quick save button here */}
+              <div className="px-6 pb-4 flex justify-end">
+                <Button onClick={handleSaveSettings} disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+              </div>
             </Card>
 
             {/* Key Metrics */}
