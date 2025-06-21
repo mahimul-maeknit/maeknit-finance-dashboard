@@ -20,30 +20,30 @@ import { Button } from "@/components/ui/button"
 
 // Define a type for the savable settings
 type SavableSettings = {
-  teamLabor: number
-  rent: number
-  electricity: number
-  water: number
-  materialCost: number
-  overhead: number
-  waterRate: number
-  electricityRate: number
-  laborRate: number
-  swatchPrice: number
-  samplePrice: number
-  gradingPrice: number
-  e72StollCapacity: number
-  e35StollCapacity: number
-  e18SwgCapacity: number
-  e72StollTime: number
-  e35StollTime: number
-  e18SwgTime: number
-  shifts: number
-  avgGarmentPrice: number
-  developmentMix: string
-  swatchesPerWeek: number
-  samplesPerWeek: number
-  gradingPerWeek: number
+  teamLabor: number | null
+  rent: number | null
+  electricity: number | null
+  water: number | null
+  materialCost: number | null
+  overhead: number | null
+  waterRate: number | null
+  electricityRate: number | null
+  laborRate: number | null
+  swatchPrice: number | null
+  samplePrice: number | null
+  gradingPrice: number | null
+  e72StollCapacity: number | null
+  e35StollCapacity: number | null
+  e18SwgCapacity: number | null
+  e72StollTime: number | null
+  e35StollTime: number | null
+  e18SwgTime: number | null
+  shifts: number | null
+  avgGarmentPrice: number | null
+  developmentMix: string | null
+  swatchesPerWeek: number | null
+  samplesPerWeek: number | null
+  gradingPerWeek: number | null
 }
 
 // Declare MACHINE_CAPACITY variable
@@ -56,41 +56,49 @@ const MACHINE_CAPACITY = {
 export default function FinanceDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "matt@maeknit.io"]
+  const AUTHORIZED_EMAILS = [
+    "mahimul@maeknit.io",
+    "mallory@maeknit.io",
+    "elias@maeknit.io",
+    "tech@maeknit.io",
+    "intel@maeknit.io",
+    "matt@maeknit.io",
+  ]
+
   // Editable expense fields
-  const [teamLabor, setTeamLabor] = useState(50684)
-  const [rent, setRent] = useState(7000)
-  const [electricity, setElectricity] = useState(450)
-  const [water, setWater] = useState(431)
-  const [materialCost, setMaterialCost] = useState(2000)
-  const [overhead, setOverhead] = useState(4240)
+  const [teamLabor, setTeamLabor] = useState<number | null>(50684)
+  const [rent, setRent] = useState<number | null>(7000)
+  const [electricity, setElectricity] = useState<number | null>(450)
+  const [water, setWater] = useState<number | null>(431)
+  const [materialCost, setMaterialCost] = useState<number | null>(2000)
+  const [overhead, setOverhead] = useState<number | null>(4240)
 
   // Editable utility rates
-  const [waterRate, setWaterRate] = useState(1.69)
-  const [electricityRate, setElectricityRate] = useState(0.32)
-  const [laborRate, setLaborRate] = useState(30)
+  const [waterRate, setWaterRate] = useState<number | null>(1.69)
+  const [electricityRate, setElectricityRate] = useState<number | null>(0.32)
+  const [laborRate, setLaborRate] = useState<number | null>(30)
 
   // Editable service pricing
-  const [swatchPrice, setSwatchPrice] = useState(250)
-  const [samplePrice, setSamplePrice] = useState(2000)
-  const [gradingPrice, setGradingPrice] = useState(2500)
+  const [swatchPrice, setSwatchPrice] = useState<number | null>(250)
+  const [samplePrice, setSamplePrice] = useState<number | null>(2000)
+  const [gradingPrice, setGradingPrice] = useState<number | null>(2500)
 
   // Editable machine capacities
-  const [e72StollCapacity, setE72StollCapacity] = useState(16)
-  const [e35StollCapacity, setE35StollCapacity] = useState(10)
-  const [e18SwgCapacity, setE18SwgCapacity] = useState(16)
+  const [e72StollCapacity, setE72StollCapacity] = useState<number | null>(16)
+  const [e35StollCapacity, setE35StollCapacity] = useState<number | null>(10)
+  const [e18SwgCapacity, setE18SwgCapacity] = useState<number | null>(16)
 
   // Editable time requirements
-  const [e72StollTime, setE72StollTime] = useState(3)
-  const [e35StollTime, setE35StollTime] = useState(1)
-  const [e18SwgTime, setE18SwgTime] = useState(1)
+  const [e72StollTime, setE72StollTime] = useState<number | null>(3)
+  const [e35StollTime, setE35StollTime] = useState<number | null>(1)
+  const [e18SwgTime, setE18SwgTime] = useState<number | null>(1)
 
-  const [shifts, setShifts] = useState(1)
-  const [avgGarmentPrice, setAvgGarmentPrice] = useState(150)
-  const [developmentMix, setDevelopmentMix] = useState("worst")
-  const [swatchesPerWeek, setSwatchesPerWeek] = useState(14)
-  const [samplesPerWeek, setSamplesPerWeek] = useState(4)
-  const [gradingPerWeek, setGradingPerWeek] = useState(2)
+  const [shifts, setShifts] = useState<number | null>(1)
+  const [avgGarmentPrice, setAvgGarmentPrice] = useState<number | null>(150)
+  const [developmentMix, setDevelopmentMix] = useState<string | null>("worst")
+  const [swatchesPerWeek, setSwatchesPerWeek] = useState<number | null>(14)
+  const [samplesPerWeek, setSamplesPerWeek] = useState<number | null>(4)
+  const [gradingPerWeek, setGradingPerWeek] = useState<number | null>(2)
 
   const [laborCostMultiplier, setLaborCostMultiplier] = useState(1)
   const [rentMultiplier, setRentMultiplier] = useState(1)
@@ -101,18 +109,18 @@ export default function FinanceDashboard() {
     // Define BASE_EXPENSES and SERVICE_PRICING inside useMemo
     // so they are re-calculated when their dependencies change.
     const BASE_EXPENSES = {
-      teamLabor: teamLabor,
-      rent: rent,
-      electricity: electricity,
-      water: water,
-      materialCost: materialCost,
-      overhead: overhead,
+      teamLabor: teamLabor ?? 0,
+      rent: rent ?? 0,
+      electricity: electricity ?? 0,
+      water: water ?? 0,
+      materialCost: materialCost ?? 0,
+      overhead: overhead ?? 0,
     }
 
     const SERVICE_PRICING = {
-      swatch: { cost: 75.88, price: swatchPrice, profit: swatchPrice - 75.88 },
-      sample: { cost: 327.02, price: samplePrice, profit: samplePrice - 327.02 },
-      grading: { cost: 1201.34, price: gradingPrice, profit: gradingPrice - 1201.34 },
+      swatch: { cost: 75.88, price: swatchPrice ?? 0, profit: (swatchPrice ?? 0) - 75.88 },
+      sample: { cost: 327.02, price: samplePrice ?? 0, profit: (samplePrice ?? 0) - 327.02 },
+      grading: { cost: 1201.34, price: gradingPrice ?? 0, profit: (gradingPrice ?? 0) - 1201.34 },
     }
 
     // Apply cost multipliers to base expenses
@@ -129,18 +137,21 @@ export default function FinanceDashboard() {
     const annualExpenses = monthlyExpenses * 12
 
     let dailyProductionCapacity = 0
-    if (shifts === 1) {
-      dailyProductionCapacity = developmentMix === "production-only" ? 42 : 16
-    } else if (shifts === 2) {
+    const currentShifts = shifts ?? 1 // Default to 1 if null
+    const currentDevelopmentMix = developmentMix ?? "worst" // Default if null
+
+    if (currentShifts === 1) {
+      dailyProductionCapacity = currentDevelopmentMix === "production-only" ? 42 : 16
+    } else if (currentShifts === 2) {
       dailyProductionCapacity = 58
     }
 
     const annualProductionCapacity = dailyProductionCapacity * 365
-    const productionRevenue = annualProductionCapacity * avgGarmentPrice
+    const productionRevenue = annualProductionCapacity * (avgGarmentPrice ?? 0)
 
-    const annualSwatches = swatchesPerWeek * 52
-    const annualSamples = samplesPerWeek * 52
-    const annualGrading = gradingPerWeek * 52
+    const annualSwatches = (swatchesPerWeek ?? 0) * 52
+    const annualSamples = (samplesPerWeek ?? 0) * 52
+    const annualGrading = (gradingPerWeek ?? 0) * 52
 
     const developmentRevenue =
       annualSwatches * SERVICE_PRICING.swatch.price +
@@ -149,7 +160,7 @@ export default function FinanceDashboard() {
 
     const totalRevenue = productionRevenue + developmentRevenue
     const profit = totalRevenue - annualExpenses
-    const profitMargin = (profit / totalRevenue) * 100
+    const profitMargin = totalRevenue !== 0 ? (profit / totalRevenue) * 100 : 0
 
     return {
       monthlyExpenses,
@@ -288,7 +299,6 @@ export default function FinanceDashboard() {
 
       console.log("Settings Saved!", "Your financial dashboard settings have been successfully updated.")
     } catch (error: unknown) {
-      // Changed 'any' to 'unknown'
       let errorMessage = "There was an issue saving your settings. Please try again."
       if (error instanceof Error) {
         errorMessage = error.message
@@ -319,32 +329,31 @@ export default function FinanceDashboard() {
 
           // Update state with fetched settings if they exist
           if (Object.keys(fetchedSettings).length > 0) {
-            // Check if fetchedSettings is not empty
-            setTeamLabor(fetchedSettings.teamLabor)
-            setRent(fetchedSettings.rent)
-            setElectricity(fetchedSettings.electricity)
-            setWater(fetchedSettings.water)
-            setMaterialCost(fetchedSettings.materialCost)
-            setOverhead(fetchedSettings.overhead)
-            setWaterRate(fetchedSettings.waterRate)
-            setElectricityRate(fetchedSettings.electricityRate)
-            setLaborRate(fetchedSettings.laborRate)
-            setSwatchPrice(fetchedSettings.swatchPrice)
-            setSamplePrice(fetchedSettings.samplePrice)
-            setGradingPrice(fetchedSettings.gradingPrice)
-            setE72StollCapacity(fetchedSettings.e72StollCapacity)
-            setE35StollCapacity(fetchedSettings.e35StollCapacity)
-            setE18SwgCapacity(fetchedSettings.e18SwgCapacity)
-            setE72StollTime(fetchedSettings.e72StollTime)
-            setE35StollTime(fetchedSettings.e35StollTime)
-            setE18SwgTime(fetchedSettings.e18SwgTime)
-            // Add fallback for newly added scenario parameters
-            setShifts(fetchedSettings.shifts || 1)
-            setAvgGarmentPrice(fetchedSettings.avgGarmentPrice || 150)
-            setDevelopmentMix(fetchedSettings.developmentMix || "worst")
-            setSwatchesPerWeek(fetchedSettings.swatchesPerWeek || 14)
-            setSamplesPerWeek(fetchedSettings.samplesPerWeek || 4)
-            setGradingPerWeek(fetchedSettings.gradingPerWeek || 2)
+            // Use nullish coalescing (??) to provide default if fetched value is null/undefined
+            setTeamLabor(fetchedSettings.teamLabor ?? 50684)
+            setRent(fetchedSettings.rent ?? 7000)
+            setElectricity(fetchedSettings.electricity ?? 450)
+            setWater(fetchedSettings.water ?? 431)
+            setMaterialCost(fetchedSettings.materialCost ?? 2000)
+            setOverhead(fetchedSettings.overhead ?? 4240)
+            setWaterRate(fetchedSettings.waterRate ?? 1.69)
+            setElectricityRate(fetchedSettings.electricityRate ?? 0.32)
+            setLaborRate(fetchedSettings.laborRate ?? 30)
+            setSwatchPrice(fetchedSettings.swatchPrice ?? 250)
+            setSamplePrice(fetchedSettings.samplePrice ?? 2000)
+            setGradingPrice(fetchedSettings.gradingPrice ?? 2500)
+            setE72StollCapacity(fetchedSettings.e72StollCapacity ?? 16)
+            setE35StollCapacity(fetchedSettings.e35StollCapacity ?? 10)
+            setE18SwgCapacity(fetchedSettings.e18SwgCapacity ?? 16)
+            setE72StollTime(fetchedSettings.e72StollTime ?? 3)
+            setE35StollTime(fetchedSettings.e35StollTime ?? 1)
+            setE18SwgTime(fetchedSettings.e18SwgTime ?? 1)
+            setShifts(fetchedSettings.shifts ?? 1)
+            setAvgGarmentPrice(fetchedSettings.avgGarmentPrice ?? 150)
+            setDevelopmentMix(fetchedSettings.developmentMix ?? "worst")
+            setSwatchesPerWeek(fetchedSettings.swatchesPerWeek ?? 14)
+            setSamplesPerWeek(fetchedSettings.samplesPerWeek ?? 4)
+            setGradingPerWeek(fetchedSettings.gradingPerWeek ?? 2)
             console.log("Settings Loaded!", "Previous settings have been loaded.")
           }
         } catch (error) {
@@ -410,7 +419,10 @@ export default function FinanceDashboard() {
               <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="shifts">Number of Shifts</Label>
-                  <Select value={shifts.toString()} onValueChange={(value) => setShifts(Number.parseInt(value))}>
+                  <Select
+                    value={shifts?.toString() ?? ""}
+                    onValueChange={(value) => setShifts(value === "" ? null : Number.parseInt(value))}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -426,8 +438,10 @@ export default function FinanceDashboard() {
                   <Input
                     id="price"
                     type="number"
-                    value={avgGarmentPrice}
-                    onChange={(e) => setAvgGarmentPrice(Number.parseInt(e.target.value) || 150)}
+                    value={avgGarmentPrice ?? ""}
+                    onChange={(e) =>
+                      setAvgGarmentPrice(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
                   />
                 </div>
 
@@ -436,8 +450,10 @@ export default function FinanceDashboard() {
                   <Input
                     id="swatches"
                     type="number"
-                    value={swatchesPerWeek}
-                    onChange={(e) => setSwatchesPerWeek(Number.parseInt(e.target.value) || 14)}
+                    value={swatchesPerWeek ?? ""}
+                    onChange={(e) =>
+                      setSwatchesPerWeek(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
                   />
                 </div>
 
@@ -446,8 +462,10 @@ export default function FinanceDashboard() {
                   <Input
                     id="samples"
                     type="number"
-                    value={samplesPerWeek}
-                    onChange={(e) => setSamplesPerWeek(Number.parseInt(e.target.value) || 4)}
+                    value={samplesPerWeek ?? ""}
+                    onChange={(e) =>
+                      setSamplesPerWeek(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
                   />
                 </div>
 
@@ -456,14 +474,19 @@ export default function FinanceDashboard() {
                   <Input
                     id="grading"
                     type="number"
-                    value={gradingPerWeek}
-                    onChange={(e) => setGradingPerWeek(Number.parseInt(e.target.value) || 2)}
+                    value={gradingPerWeek ?? ""}
+                    onChange={(e) =>
+                      setGradingPerWeek(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Development Mix</Label>
-                  <Select value={developmentMix} onValueChange={setDevelopmentMix}>
+                  <Select
+                    value={developmentMix ?? ""}
+                    onValueChange={(value) => setDevelopmentMix(value === "" ? null : value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -536,7 +559,7 @@ export default function FinanceDashboard() {
                     Daily: {calculations.dailyProductionCapacity} garments
                   </div>
                   <div className="text-xs text-gray-500">
-                    {shifts} shift{shifts > 1 ? "s" : ""}
+                    {shifts} shift{shifts !== null && shifts > 1 ? "s" : ""}
                   </div>
                 </CardContent>
               </Card>
@@ -761,7 +784,7 @@ export default function FinanceDashboard() {
                   <div className="p-4 bg-green-50 rounded-lg">
                     <div className="text-sm text-green-600 font-medium">Break-even Units (Production)</div>
                     <div className="text-2xl font-bold text-green-800">
-                      {Math.ceil(calculations.annualExpenses / avgGarmentPrice).toLocaleString()}
+                      {Math.ceil(calculations.annualExpenses / (avgGarmentPrice ?? 1)).toLocaleString()}
                     </div>
                   </div>
                   <div className="p-4 bg-purple-50 rounded-lg">

@@ -10,50 +10,50 @@ import { Button } from "@/components/ui/button" // Import Button
 
 interface SettingsPanelProps {
   // Expenses
-  teamLabor: number
-  setTeamLabor: (value: number) => void
-  rent: number
-  setRent: (value: number) => void
-  electricity: number
-  setElectricity: (value: number) => void
-  water: number
-  setWater: (value: number) => void
-  materialCost: number
-  setMaterialCost: (value: number) => void
-  overhead: number
-  setOverhead: (value: number) => void
+  teamLabor: number | null
+  setTeamLabor: (value: number | null) => void
+  rent: number | null
+  setRent: (value: number | null) => void
+  electricity: number | null
+  setElectricity: (value: number | null) => void
+  water: number | null
+  setWater: (value: number | null) => void
+  materialCost: number | null
+  setMaterialCost: (value: number | null) => void
+  overhead: number | null
+  setOverhead: (value: number | null) => void
 
   // Utility rates
-  waterRate: number
-  setWaterRate: (value: number) => void
-  electricityRate: number
-  setElectricityRate: (value: number) => void
-  laborRate: number
-  setLaborRate: (value: number) => void
+  waterRate: number | null
+  setWaterRate: (value: number | null) => void
+  electricityRate: number | null
+  setElectricityRate: (value: number | null) => void
+  laborRate: number | null
+  setLaborRate: (value: number | null) => void
 
   // Service pricing
-  swatchPrice: number
-  setSwatchPrice: (value: number) => void
-  samplePrice: number
-  setSamplePrice: (value: number) => void
-  gradingPrice: number
-  setGradingPrice: (value: number) => void
+  swatchPrice: number | null
+  setSwatchPrice: (value: number | null) => void
+  samplePrice: number | null
+  setSamplePrice: (value: number | null) => void
+  gradingPrice: number | null
+  setGradingPrice: (value: number | null) => void
 
   // Machine capacities
-  e72StollCapacity: number
-  setE72StollCapacity: (value: number) => void
-  e35StollCapacity: number
-  setE35StollCapacity: (value: number) => void
-  e18SwgCapacity: number
-  setE18SwgCapacity: (value: number) => void
+  e72StollCapacity: number | null
+  setE72StollCapacity: (value: number | null) => void
+  e35StollCapacity: number | null
+  setE35StollCapacity: (value: number | null) => void
+  e18SwgCapacity: number | null
+  setE18SwgCapacity: (value: number | null) => void
 
   // Time requirements
-  e72StollTime: number
-  setE72StollTime: (value: number) => void
-  e35StollTime: number
-  setE35StollTime: (value: number) => void
-  e18SwgTime: number
-  setE18SwgTime: (value: number) => void
+  e72StollTime: number | null
+  setE72StollTime: (value: number | null) => void
+  e35StollTime: number | null
+  setE35StollTime: (value: number | null) => void
+  e18SwgTime: number | null
+  setE18SwgTime: (value: number | null) => void
 
   // New prop for saving settings
   onSave: () => Promise<void>
@@ -99,7 +99,8 @@ export function SettingsPanel({
   onSave, // Destructure the new prop
 }: SettingsPanelProps) {
   const [isSaving, setIsSaving] = useState(false) // State for saving loading
-  const totalMonthlyExpenses = teamLabor + rent + electricity + water + materialCost + overhead
+  const totalMonthlyExpenses =
+    (teamLabor ?? 0) + (rent ?? 0) + (electricity ?? 0) + (water ?? 0) + (materialCost ?? 0) + (overhead ?? 0)
 
   const handleSaveClick = async () => {
     setIsSaving(true)
@@ -123,8 +124,8 @@ export function SettingsPanel({
             <Input
               id="team-labor"
               type="number"
-              value={teamLabor}
-              onChange={(e) => setTeamLabor(Number.parseInt(e.target.value) || 0)}
+              value={teamLabor ?? ""}
+              onChange={(e) => setTeamLabor(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
           </div>
 
@@ -133,8 +134,8 @@ export function SettingsPanel({
             <Input
               id="rent"
               type="number"
-              value={rent}
-              onChange={(e) => setRent(Number.parseInt(e.target.value) || 0)}
+              value={rent ?? ""}
+              onChange={(e) => setRent(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
           </div>
 
@@ -143,8 +144,8 @@ export function SettingsPanel({
             <Input
               id="electricity"
               type="number"
-              value={electricity}
-              onChange={(e) => setElectricity(Number.parseInt(e.target.value) || 0)}
+              value={electricity ?? ""}
+              onChange={(e) => setElectricity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
           </div>
 
@@ -153,8 +154,8 @@ export function SettingsPanel({
             <Input
               id="water"
               type="number"
-              value={water}
-              onChange={(e) => setWater(Number.parseInt(e.target.value) || 0)}
+              value={water ?? ""}
+              onChange={(e) => setWater(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
           </div>
 
@@ -163,8 +164,8 @@ export function SettingsPanel({
             <Input
               id="material-cost"
               type="number"
-              value={materialCost}
-              onChange={(e) => setMaterialCost(Number.parseInt(e.target.value) || 0)}
+              value={materialCost ?? ""}
+              onChange={(e) => setMaterialCost(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
           </div>
 
@@ -173,8 +174,8 @@ export function SettingsPanel({
             <Input
               id="overhead"
               type="number"
-              value={overhead}
-              onChange={(e) => setOverhead(Number.parseInt(e.target.value) || 0)}
+              value={overhead ?? ""}
+              onChange={(e) => setOverhead(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
           </div>
         </CardContent>
@@ -192,8 +193,8 @@ export function SettingsPanel({
               id="water-rate"
               type="number"
               step="0.01"
-              value={waterRate}
-              onChange={(e) => setWaterRate(Number.parseFloat(e.target.value) || 0)}
+              value={waterRate ?? ""}
+              onChange={(e) => setWaterRate(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)}
             />
           </div>
 
@@ -203,8 +204,10 @@ export function SettingsPanel({
               id="electricity-rate"
               type="number"
               step="0.01"
-              value={electricityRate}
-              onChange={(e) => setElectricityRate(Number.parseFloat(e.target.value) || 0)}
+              value={electricityRate ?? ""}
+              onChange={(e) =>
+                setElectricityRate(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+              }
             />
           </div>
 
@@ -213,8 +216,8 @@ export function SettingsPanel({
             <Input
               id="labor-rate"
               type="number"
-              value={laborRate}
-              onChange={(e) => setLaborRate(Number.parseInt(e.target.value) || 0)}
+              value={laborRate ?? ""}
+              onChange={(e) => setLaborRate(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
           </div>
         </CardContent>
@@ -231,11 +234,12 @@ export function SettingsPanel({
             <Input
               id="swatch-price"
               type="number"
-              value={swatchPrice}
-              onChange={(e) => setSwatchPrice(Number.parseInt(e.target.value) || 0)}
+              value={swatchPrice ?? ""}
+              onChange={(e) => setSwatchPrice(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
             <div className="text-xs text-gray-500">
-              Profit: ${(swatchPrice - 75.88).toFixed(2)} ({(((swatchPrice - 75.88) / swatchPrice) * 100).toFixed(1)}%)
+              Profit: ${(swatchPrice !== null ? swatchPrice - 75.88 : -75.88).toFixed(2)} (
+              {(((swatchPrice !== null ? swatchPrice - 75.88 : -75.88) / (swatchPrice || 1)) * 100).toFixed(1)}%)
             </div>
           </div>
 
@@ -244,11 +248,12 @@ export function SettingsPanel({
             <Input
               id="sample-price"
               type="number"
-              value={samplePrice}
-              onChange={(e) => setSamplePrice(Number.parseInt(e.target.value) || 0)}
+              value={samplePrice ?? ""}
+              onChange={(e) => setSamplePrice(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
             <div className="text-xs text-gray-500">
-              Profit: ${(samplePrice - 327.02).toFixed(2)} ({(((samplePrice - 327.02) / samplePrice) * 100).toFixed(1)}
+              Profit: ${(samplePrice !== null ? samplePrice - 327.02 : -327.02).toFixed(2)} (
+              {(((samplePrice !== null ? samplePrice - 327.02 : -327.02) / (samplePrice || 1)) * 100).toFixed(1)}
               %)
             </div>
           </div>
@@ -258,12 +263,12 @@ export function SettingsPanel({
             <Input
               id="grading-price"
               type="number"
-              value={gradingPrice}
-              onChange={(e) => setGradingPrice(Number.parseInt(e.target.value) || 0)}
+              value={gradingPrice ?? ""}
+              onChange={(e) => setGradingPrice(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
             />
             <div className="text-xs text-gray-500">
-              Profit: ${(gradingPrice - 1201.34).toFixed(2)} (
-              {(((gradingPrice - 1201.34) / gradingPrice) * 100).toFixed(1)}%)
+              Profit: ${(gradingPrice !== null ? gradingPrice - 1201.34 : -1201.34).toFixed(2)} (
+              {(((gradingPrice !== null ? gradingPrice - 1201.34 : -1201.34) / (gradingPrice || 1)) * 100).toFixed(1)}%)
             </div>
           </div>
         </CardContent>
@@ -283,8 +288,10 @@ export function SettingsPanel({
                 <Input
                   id="e72-capacity"
                   type="number"
-                  value={e72StollCapacity}
-                  onChange={(e) => setE72StollCapacity(Number.parseInt(e.target.value) || 0)}
+                  value={e72StollCapacity ?? ""}
+                  onChange={(e) =>
+                    setE72StollCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -292,11 +299,13 @@ export function SettingsPanel({
                 <Input
                   id="e72-time"
                   type="number"
-                  value={e72StollTime}
-                  onChange={(e) => setE72StollTime(Number.parseInt(e.target.value) || 0)}
+                  value={e72StollTime ?? ""}
+                  onChange={(e) => setE72StollTime(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
                 />
               </div>
-              <div className="text-xs text-gray-500">Annual: {(e72StollCapacity * 365).toLocaleString()} garments</div>
+              <div className="text-xs text-gray-500">
+                Annual: {((e72StollCapacity ?? 0) * 365).toLocaleString()} garments
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -306,8 +315,10 @@ export function SettingsPanel({
                 <Input
                   id="e35-capacity"
                   type="number"
-                  value={e35StollCapacity}
-                  onChange={(e) => setE35StollCapacity(Number.parseInt(e.target.value) || 0)}
+                  value={e35StollCapacity ?? ""}
+                  onChange={(e) =>
+                    setE35StollCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -315,11 +326,13 @@ export function SettingsPanel({
                 <Input
                   id="e35-time"
                   type="number"
-                  value={e35StollTime}
-                  onChange={(e) => setE35StollTime(Number.parseInt(e.target.value) || 0)}
+                  value={e35StollTime ?? ""}
+                  onChange={(e) => setE35StollTime(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
                 />
               </div>
-              <div className="text-xs text-gray-500">Annual: {(e35StollCapacity * 365).toLocaleString()} garments</div>
+              <div className="text-xs text-gray-500">
+                Annual: {((e35StollCapacity ?? 0) * 365).toLocaleString()} garments
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -329,8 +342,10 @@ export function SettingsPanel({
                 <Input
                   id="e18-capacity"
                   type="number"
-                  value={e18SwgCapacity}
-                  onChange={(e) => setE18SwgCapacity(Number.parseInt(e.target.value) || 0)}
+                  value={e18SwgCapacity ?? ""}
+                  onChange={(e) =>
+                    setE18SwgCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -338,11 +353,13 @@ export function SettingsPanel({
                 <Input
                   id="e18-time"
                   type="number"
-                  value={e18SwgTime}
-                  onChange={(e) => setE18SwgTime(Number.parseInt(e.target.value) || 0)}
+                  value={e18SwgTime ?? ""}
+                  onChange={(e) => setE18SwgTime(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
                 />
               </div>
-              <div className="text-xs text-gray-500">Annual: {(e18SwgCapacity * 365).toLocaleString()} garments</div>
+              <div className="text-xs text-gray-500">
+                Annual: {((e18SwgCapacity ?? 0) * 365).toLocaleString()} garments
+              </div>
             </div>
           </div>
 
@@ -353,12 +370,15 @@ export function SettingsPanel({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-blue-600">Daily Total:</span>{" "}
-                <span className="font-bold">{e72StollCapacity + e35StollCapacity + e18SwgCapacity} garments</span>
+                <span className="font-bold">
+                  {(e72StollCapacity ?? 0) + (e35StollCapacity ?? 0) + (e18SwgCapacity ?? 0)} garments
+                </span>
               </div>
               <div>
                 <span className="text-blue-600">Annual Total:</span>{" "}
                 <span className="font-bold">
-                  {((e72StollCapacity + e35StollCapacity + e18SwgCapacity) * 365).toLocaleString()} garments
+                  {(((e72StollCapacity ?? 0) + (e35StollCapacity ?? 0) + (e18SwgCapacity ?? 0)) * 365).toLocaleString()}{" "}
+                  garments
                 </span>
               </div>
             </div>

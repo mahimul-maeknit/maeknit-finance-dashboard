@@ -7,39 +7,39 @@ const sql = neon(process.env.DATABASE_URL!)
 
 // Define a type for the settings object
 type SavableSettings = {
-  teamLabor: number
-  rent: number
-  electricity: number
-  water: number
-  materialCost: number
-  overhead: number
-  waterRate: number
-  electricityRate: number
-  laborRate: number
-  swatchPrice: number
-  samplePrice: number
-  gradingPrice: number
-  e72StollCapacity: number
-  e35StollCapacity: number
-  e18SwgCapacity: number
-  e72StollTime: number
-  e35StollTime: number
-  e18SwgTime: number
-  shifts: number
-  avgGarmentPrice: number
-  developmentMix: string
-  swatchesPerWeek: number
-  samplesPerWeek: number
-  gradingPerWeek: number
+  teamLabor: number | null
+  rent: number | null
+  electricity: number | null
+  water: number | null
+  materialCost: number | null
+  overhead: number | null
+  waterRate: number | null
+  electricityRate: number | null
+  laborRate: number | null
+  swatchPrice: number | null
+  samplePrice: number | null
+  gradingPrice: number | null
+  e72StollCapacity: number | null
+  e35StollCapacity: number | null
+  e18SwgCapacity: number | null
+  e72StollTime: number | null
+  e35StollTime: number | null
+  e18SwgTime: number | null
+  shifts: number | null
+  avgGarmentPrice: number | null
+  developmentMix: string | null
+  swatchesPerWeek: number | null
+  samplesPerWeek: number | null
+  gradingPerWeek: number | null
 }
-const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "matt@maeknit.io"]
 
 // GET handler to fetch settings
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: Request) {
   const session = await getServerSession()
+
   // Authorization check
-  if (!session || !AUTHORIZED_EMAILS.includes(session.user?.email || "")) {
+  if (!session || session.user?.email !== "mahimul@maeknit.io") {
     return new NextResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
   }
 
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   const session = await getServerSession()
 
   // Authorization check
-  if (!session || !AUTHORIZED_EMAILS.includes(session.user?.email || "")) {
+  if (!session || session.user?.email !== "mahimul@maeknit.io") {
     return new NextResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
   }
 
