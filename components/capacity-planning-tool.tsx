@@ -1,30 +1,28 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 export function CapacityPlanningTool() {
   // User Inputs for Scenario Parameters
   const [targetAnnualRevenue, setTargetAnnualRevenue] = useState<number | null>(100000)
-  const [numStaff, setNumStaff] = useState<number | null>(5) // Based on current NY Lab staff in Excel
-  const [numShifts, setNumShifts] = useState<"1" | "2">("1")
+  const [numStaff, setNumStaff] = useState<number | null>(5)
   const [desiredWeeklySwatches, setDesiredWeeklySwatches] = useState<number | null>(20)
   const [desiredWeeklySamples, setDesiredWeeklySamples] = useState<number | null>(4)
   const [desiredWeeklyGrading, setDesiredWeeklyGrading] = useState<number | null>(2)
-  const [avgGarmentPrice, setAvgGarmentPrice] = useState<number | null>(150) // From previous settings
+  const [avgGarmentPrice, setAvgGarmentPrice] = useState<number | null>(150)
 
-  // Adjustable Parameters (formerly hardcoded constants)
+  // Adjustable Parameters
   const [laborRatePerHour, setLaborRatePerHour] = useState<number | null>(30)
   const [workHoursPerWeekPerPerson, setWorkHoursPerWeekPerPerson] = useState<number | null>(40)
 
-  // Service Time Details (in minutes)
+  // Service Time Details (in minutes) - Used for labor hour calculations, not direct machine allocation
   const [swatchProgrammingMin, setSwatchProgrammingMin] = useState<number | null>(30)
   const [swatchKnittingMin, setSwatchKnittingMin] = useState<number | null>(25)
   const [swatchLinkingMin, setSwatchLinkingMin] = useState<number | null>(0)
@@ -37,26 +35,105 @@ export function CapacityPlanningTool() {
   const [gradingKnittingMin, setGradingKnittingMin] = useState<number | null>(450)
   const [gradingLinkingMin, setGradingLinkingMin] = useState<number | null>(300)
 
-  // Machine Knitting Times (in minutes per garment)
-  const [e72StollKnittingTime, setE72StollKnittingTime] = useState<number | null>(90)
-  const [e35StollKnittingTime, setE35StollKnittingTime] = useState<number | null>(50)
-  const [e18SwgKnittingTime, setE18SwgKnittingTime] = useState<number | null>(30)
+  // Machine Knitting Times (in minutes per garment) - Used for converting units to minutes for labor calculations
+  const [e72StollKnittingTime, setE72StollKnittingTime] = useState<number | null>(3)
+  const [e35StollKnittingTime, setE35StollKnittingTime] = useState<number | null>(1)
+  const [e18SwgKnittingTime, setE18SwgKnittingTime] = useState<number | null>(1)
 
-  // Daily Capacities (units per day)
-  const [e72Stoll1ShiftProdOnlyCapacity, setE72Stoll1ShiftProdOnlyCapacity] = useState<number | null>(0)
-  const [e35Stoll1ShiftProdOnlyCapacity, setE35Stoll1ShiftProdOnlyCapacity] = useState<number | null>(0)
-  const [e18Swg1ShiftProdOnlyCapacity, setE18Swg1ShiftProdOnlyCapacity] = useState<number | null>(0)
+  // Actual Machine Capacity (Units per Day) - these are the base capacities
+  const [actualE72StollCapacity, setActualE72StollCapacity] = useState<number | null>(24)
+  const [actualE35StollCapacity, setActualE35StollCapacity] = useState<number | null>(10)
+  const [actualE18SwgCapacity, setActualE18SwgCapacity] = useState<number | null>(16)
 
-  const [e72Stoll1ShiftWithDevCapacity, setE72Stoll1ShiftWithDevCapacity] = useState<number | null>(20)
-  const [e35Stoll1ShiftWithDevCapacity, setE35Stoll1ShiftWithDevCapacity] = useState<number | null>(8)
-  const [e18Swg1ShiftWithDevCapacity, setE18Swg1ShiftWithDevCapacity] = useState<number | null>(10)
+  // New states for editable Development Payload (Units per Day) per machine
+  const [devPayloadE72StollUnits, setDevPayloadE72StollUnits] = useState<number | null>(0)
+  const [devPayloadE35StollUnits, setDevPayloadE35StollUnits] = useState<number | null>(0)
+  const [devPayloadE18SwgUnits, setDevPayloadE18SwgUnits] = useState<number | null>(0)
 
-  const [e72Stoll2ShiftsCapacity, setE72Stoll2ShiftsCapacity] = useState<number | null>(27)
-  const [e35Stoll2ShiftsCapacity, setE35Stoll2ShiftsCapacity] = useState<number | null>(12)
-  const [e18Swg2ShiftsCapacity, setE18Swg2ShiftsCapacity] = useState<number | null>(19)
+  // New states for editable Production Payload (Units per Day) per machine
+  const [prodPayloadE72StollUnits, setProdPayloadE72StollUnits] = useState<number | null>(24)
+  const [prodPayloadE35StollUnits, setProdPayloadE35StollUnits] = useState<number | null>(10)
+  const [prodPayloadE18SwgUnits, setProdPayloadE18SwgUnits] = useState<number | null>(16)
 
-  // Add state for development mix
+  // Development Mix
   const [developmentMix, setDevelopmentMix] = useState<string | null>("production-only")
+
+  // Helper function to handle interdependent changes for development units
+  const handleDevUnitsChange = (machine: "e72" | "e35" | "e18", value: number | null) => {
+    const actualCap =
+      machine === "e72"
+        ? (actualE72StollCapacity ?? 0)
+        : machine === "e35"
+          ? (actualE35StollCapacity ?? 0)
+          : (actualE18SwgCapacity ?? 0)
+
+    const newDevUnits = value ?? 0
+    const cappedDevUnits = Math.min(newDevUnits, actualCap)
+    const newProdUnits = Math.max(0, actualCap - cappedDevUnits)
+
+    if (machine === "e72") {
+      setDevPayloadE72StollUnits(cappedDevUnits)
+      setProdPayloadE72StollUnits(newProdUnits)
+    } else if (machine === "e35") {
+      setDevPayloadE35StollUnits(cappedDevUnits)
+      setProdPayloadE35StollUnits(newProdUnits)
+    } else {
+      setDevPayloadE18SwgUnits(cappedDevUnits)
+      setProdPayloadE18SwgUnits(newProdUnits)
+    }
+  }
+
+  // Helper function to handle interdependent changes for production units
+  const handleProdUnitsChange = (machine: "e72" | "e35" | "e18", value: number | null) => {
+    const actualCap =
+      machine === "e72"
+        ? (actualE72StollCapacity ?? 0)
+        : machine === "e35"
+          ? (actualE35StollCapacity ?? 0)
+          : (actualE18SwgCapacity ?? 0)
+
+    const newProdUnits = value ?? 0
+    const cappedProdUnits = Math.min(newProdUnits, actualCap)
+    const newDevUnits = Math.max(0, actualCap - cappedProdUnits)
+
+    if (machine === "e72") {
+      setProdPayloadE72StollUnits(cappedProdUnits)
+      setDevPayloadE72StollUnits(newDevUnits)
+    } else if (machine === "e35") {
+      setProdPayloadE35StollUnits(cappedProdUnits)
+      setDevPayloadE35StollUnits(newDevUnits)
+    } else {
+      setProdPayloadE18SwgUnits(cappedProdUnits)
+      setDevPayloadE18SwgUnits(newDevUnits)
+    }
+  }
+
+  // Effect to update payload states when developmentMix changes
+  useEffect(() => {
+    if (developmentMix === "production-only") {
+      setDevPayloadE72StollUnits(0)
+      setDevPayloadE35StollUnits(0)
+      setDevPayloadE18SwgUnits(0)
+      setProdPayloadE72StollUnits(actualE72StollCapacity)
+      setProdPayloadE35StollUnits(actualE35StollCapacity)
+      setProdPayloadE18SwgUnits(actualE18SwgCapacity)
+    } else if (developmentMix === "development-only") {
+      setProdPayloadE72StollUnits(0)
+      setProdPayloadE35StollUnits(0)
+      setProdPayloadE18SwgUnits(0)
+      setDevPayloadE72StollUnits(actualE72StollCapacity)
+      setDevPayloadE35StollUnits(actualE35StollCapacity)
+      setDevPayloadE18SwgUnits(actualE18SwgCapacity)
+    } else {
+      // "production-and-development" - default to 0 dev, full prod, user can adjust
+      setDevPayloadE72StollUnits(0)
+      setDevPayloadE35StollUnits(0)
+      setDevPayloadE18SwgUnits(0)
+      setProdPayloadE72StollUnits(actualE72StollCapacity)
+      setProdPayloadE35StollUnits(actualE35StollCapacity)
+      setProdPayloadE18SwgUnits(actualE18SwgCapacity)
+    }
+  }, [developmentMix, actualE72StollCapacity, actualE35StollCapacity, actualE18SwgCapacity])
 
   const handleResetToDefaults = () => {
     setLaborRatePerHour(30)
@@ -74,39 +151,50 @@ export function CapacityPlanningTool() {
     setGradingKnittingMin(450)
     setGradingLinkingMin(300)
 
-    setE72StollKnittingTime(90)
-    setE35StollKnittingTime(50)
-    setE18SwgKnittingTime(30)
+    setE72StollKnittingTime(3)
+    setE35StollKnittingTime(1)
+    setE18SwgKnittingTime(1)
 
-    // Reset 1 Shift - Production Only capacities to 0
-    setE72Stoll1ShiftProdOnlyCapacity(0)
-    setE35Stoll1ShiftProdOnlyCapacity(0)
-    setE18Swg1ShiftProdOnlyCapacity(0)
+    setActualE72StollCapacity(24)
+    setActualE35StollCapacity(10)
+    setActualE18SwgCapacity(16)
 
-    setE72Stoll1ShiftWithDevCapacity(20)
-    setE35Stoll1ShiftWithDevCapacity(8)
-    setE18Swg1ShiftWithDevCapacity(10)
-
-    setE72Stoll2ShiftsCapacity(27)
-    setE35Stoll2ShiftsCapacity(12)
-    setE18Swg2ShiftsCapacity(19)
-
-    // Reset development mix
-    setDevelopmentMix("production-only")
+    // Reset new editable fields based on current development mix
+    if (developmentMix === "production-only") {
+      setDevPayloadE72StollUnits(0)
+      setDevPayloadE35StollUnits(0)
+      setDevPayloadE18SwgUnits(0)
+      setProdPayloadE72StollUnits(24)
+      setProdPayloadE35StollUnits(10)
+      setProdPayloadE18SwgUnits(16)
+    } else if (developmentMix === "development-only") {
+      setProdPayloadE72StollUnits(0)
+      setProdPayloadE35StollUnits(0)
+      setProdPayloadE18SwgUnits(0)
+      setDevPayloadE72StollUnits(24)
+      setDevPayloadE35StollUnits(10)
+      setDevPayloadE18SwgUnits(16)
+    } else {
+      setDevPayloadE72StollUnits(0)
+      setDevPayloadE35StollUnits(0)
+      setDevPayloadE18SwgUnits(0)
+      setProdPayloadE72StollUnits(24)
+      setProdPayloadE35StollUnits(10)
+      setProdPayloadE18SwgUnits(16)
+    }
   }
 
   const calculations = useMemo(() => {
     const currentNumStaff = numStaff ?? 5
-    const currentNumShifts = Number.parseInt(numShifts)
     const currentAvgGarmentPrice = avgGarmentPrice ?? 150
     const currentLaborRatePerHour = laborRatePerHour ?? 30
     const currentWorkHoursPerWeekPerPerson = workHoursPerWeekPerPerson ?? 40
 
-    // Total available labor hours per week
-    const totalAvailableLaborHoursPerWeek = currentNumStaff * currentWorkHoursPerWeekPerPerson * currentNumShifts
+    // Total available labor hours per week (fixed to 1 shift)
+    const totalAvailableLaborHoursPerWeek = currentNumStaff * currentWorkHoursPerWeekPerPerson
     const totalAvailableLaborHoursPerYear = totalAvailableLaborHoursPerWeek * 52
 
-    // Calculate hours needed for desired development units
+    // Calculate hours needed for desired development units (for labor and revenue, not machine allocation)
     const programmingHoursPerSwatchCalc = (swatchProgrammingMin ?? 0) / 60
     const knittingHoursPerSwatchCalc = (swatchKnittingMin ?? 0) / 60
     const linkingHoursPerSwatchCalc = (swatchLinkingMin ?? 0) / 60
@@ -153,49 +241,34 @@ export function CapacityPlanningTool() {
     const remainingLaborHoursForProductionWeekly = totalAvailableLaborHoursPerWeek - totalDevelopmentHoursWeekly
     const remainingLaborHoursForProductionAnnual = remainingLaborHoursForProductionWeekly * 52
 
-    // Determine effective daily machine capacity based on shifts and development mix
-    let effectiveDailyMachineCapacity: { [key: string]: number }
-    if (currentNumShifts === 1) {
-      effectiveDailyMachineCapacity =
-        developmentMix === "production-only"
-          ? {
-              "E7.2 STOLL": e72Stoll1ShiftProdOnlyCapacity ?? 0,
-              "E3.5,2 STOLL": e35Stoll1ShiftProdOnlyCapacity ?? 0,
-              "E18 SWG": e18Swg1ShiftProdOnlyCapacity ?? 0,
-            }
-          : {
-              "E7.2 STOLL": e72Stoll1ShiftWithDevCapacity ?? 0,
-              "E3.5,2 STOLL": e35Stoll1ShiftWithDevCapacity ?? 0,
-              "E18 SWG": e18Swg1ShiftWithDevCapacity ?? 0,
-            }
-    } else {
-      // 2 shifts
-      effectiveDailyMachineCapacity = {
-        "E7.2 STOLL": e72Stoll2ShiftsCapacity ?? 0,
-        "E3.5,2 STOLL": e35Stoll2ShiftsCapacity ?? 0,
-        "E18 SWG": e18Swg2ShiftsCapacity ?? 0,
-      }
-    }
+    // --- Machine Capacity Calculations based on Development Mix and User Inputs ---
+    const totalDevUnitsDaily =
+      (devPayloadE72StollUnits ?? 0) + (devPayloadE35StollUnits ?? 0) + (devPayloadE18SwgUnits ?? 0)
+    const totalProdUnitsDaily =
+      (prodPayloadE72StollUnits ?? 0) + (prodPayloadE35StollUnits ?? 0) + (prodPayloadE18SwgUnits ?? 0)
 
-    const totalDailyMachineCapacity = Object.values(effectiveDailyMachineCapacity).reduce(
-      (sum, capacity) => sum + capacity,
-      0,
-    )
-    const totalAnnualMachineCapacity = totalDailyMachineCapacity * 365
+    // Calculate minutes consumed by development units (for labor calculations, not machine capacity)
+    const devKnittingMinutesDailyPayload =
+      (devPayloadE72StollUnits ?? 0) * (e72StollKnittingTime ?? 0) +
+      (devPayloadE35StollUnits ?? 0) * (e35StollKnittingTime ?? 0) +
+      (devPayloadE18SwgUnits ?? 0) * (e18SwgKnittingTime ?? 0)
+
+    const totalWeeklyProductionUnits = totalProdUnitsDaily * 5
+    const totalMonthlyProductionUnits = totalProdUnitsDaily * (365 / 12)
+    const totalAnnualProductionUnits = totalProdUnitsDaily * 365
 
     // Calculate production units achievable with remaining labor hours
-    // Average knitting time per garment (simplified average across machines)
     const avgKnittingTimePerGarment =
       ((e72StollKnittingTime ?? 0) + (e35StollKnittingTime ?? 0) + (e18SwgKnittingTime ?? 0)) / 3
     const avgProductionHoursPerGarment = avgKnittingTimePerGarment / 60 // Convert minutes to hours
 
-    let achievableProductionUnitsAnnual = 0
+    let achievableProductionUnitsAnnualByLabor = 0
     if (avgProductionHoursPerGarment > 0) {
-      achievableProductionUnitsAnnual = remainingLaborHoursForProductionAnnual / avgProductionHoursPerGarment
+      achievableProductionUnitsAnnualByLabor = remainingLaborHoursForProductionAnnual / avgProductionHoursPerGarment
     }
 
-    // Cap production units by machine capacity if it's a bottleneck
-    achievableProductionUnitsAnnual = Math.min(achievableProductionUnitsAnnual, totalAnnualMachineCapacity)
+    // Final achievable production units is the minimum of machine capacity (from inputs) and labor capacity
+    const achievableProductionUnitsAnnual = Math.min(totalAnnualProductionUnits, achievableProductionUnitsAnnualByLabor)
 
     const productionRevenueAnnual = achievableProductionUnitsAnnual * currentAvgGarmentPrice
     const totalProjectedRevenue = productionRevenueAnnual + developmentRevenueAnnual
@@ -217,6 +290,22 @@ export function CapacityPlanningTool() {
     const isTargetAchievable = totalProjectedRevenue >= (targetAnnualRevenue ?? 0)
     const revenueGap = (targetAnnualRevenue ?? 0) - totalProjectedRevenue
 
+    // Actual machine minutes per day (base capacity for comparison)
+    const actualE72StollMinutesDaily = (actualE72StollCapacity ?? 0) * (e72StollKnittingTime ?? 0)
+    const actualE35StollMinutesDaily = (actualE35StollCapacity ?? 0) * (e35StollKnittingTime ?? 0)
+    const actualE18SwgMinutesDaily = (actualE18SwgCapacity ?? 0) * (e18SwgKnittingTime ?? 0)
+    const totalActualMachineMinutesDaily =
+      actualE72StollMinutesDaily + actualE35StollMinutesDaily + actualE18SwgMinutesDaily
+
+    // Check for over-capacity in "production-and-development" mix (units based)
+    const e72StollCombinedUnits = (devPayloadE72StollUnits ?? 0) + (prodPayloadE72StollUnits ?? 0)
+    const e35StollCombinedUnits = (devPayloadE35StollUnits ?? 0) + (prodPayloadE35StollUnits ?? 0)
+    const e18SwgCombinedUnits = (devPayloadE18SwgUnits ?? 0) + (prodPayloadE18SwgUnits ?? 0)
+
+    const e72StollOverCapacity = e72StollCombinedUnits > (actualE72StollCapacity ?? 0)
+    const e35StollOverCapacity = e35StollCombinedUnits > (actualE35StollCapacity ?? 0)
+    const e18SwgOverCapacity = e18SwgCombinedUnits > (actualE18SwgCapacity ?? 0)
+
     return {
       totalAvailableLaborHoursPerWeek,
       totalAvailableLaborHoursPerYear,
@@ -234,14 +323,24 @@ export function CapacityPlanningTool() {
       isTargetAchievable,
       revenueGap,
       hoursToReachTargetRevenue,
-      totalAnnualMachineCapacity,
-      effectiveDailyMachineCapacity,
+      totalActualMachineMinutesDaily, // Still useful for overall machine time context
+      devKnittingMinutesDailyPayload, // Still useful for labor time consumed by dev knitting
+      totalDevUnitsDaily,
+      totalProdUnitsDaily,
+      totalWeeklyProductionUnits,
+      totalMonthlyProductionUnits,
+      totalAnnualProductionUnits,
       currentLaborRatePerHour,
+      actualE72StollMinutesDaily,
+      actualE35StollMinutesDaily,
+      actualE18SwgMinutesDaily,
+      e72StollOverCapacity,
+      e35StollOverCapacity,
+      e18SwgOverCapacity,
     }
   }, [
     targetAnnualRevenue,
     numStaff,
-    numShifts,
     desiredWeeklySwatches,
     desiredWeeklySamples,
     desiredWeeklyGrading,
@@ -260,17 +359,21 @@ export function CapacityPlanningTool() {
     e72StollKnittingTime,
     e35StollKnittingTime,
     e18SwgKnittingTime,
-    e72Stoll1ShiftProdOnlyCapacity,
-    e35Stoll1ShiftProdOnlyCapacity,
-    e18Swg1ShiftProdOnlyCapacity,
-    e72Stoll1ShiftWithDevCapacity,
-    e35Stoll1ShiftWithDevCapacity,
-    e18Swg1ShiftWithDevCapacity,
-    e72Stoll2ShiftsCapacity,
-    e35Stoll2ShiftsCapacity,
-    e18Swg2ShiftsCapacity,
-    developmentMix, // Add developmentMix as a dependency
+    actualE72StollCapacity,
+    actualE35StollCapacity,
+    actualE18SwgCapacity,
+    developmentMix,
+    devPayloadE72StollUnits,
+    devPayloadE35StollUnits,
+    devPayloadE18SwgUnits,
+    prodPayloadE72StollUnits,
+    prodPayloadE35StollUnits,
+    prodPayloadE18SwgUnits,
   ])
+
+  const isProductionOnly = developmentMix === "production-only"
+  const isDevelopmentOnly = developmentMix === "development-only"
+  const isProdAndDev = developmentMix === "production-and-development"
 
   return (
     <div className="space-y-6">
@@ -302,18 +405,6 @@ export function CapacityPlanningTool() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="num-shifts">Number of Shifts</Label>
-              <Select value={numShifts} onValueChange={(value: "1" | "2") => setNumShifts(value)}>
-                <SelectTrigger id="num-shifts">
-                  <SelectValue placeholder="Select shifts" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 Shift</SelectItem>
-                  <SelectItem value="2">2 Shifts</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="avg-garment-price">Avg Garment Price ($)</Label>
               <Input
                 id="avg-garment-price"
@@ -322,6 +413,7 @@ export function CapacityPlanningTool() {
                 onChange={(e) =>
                   setAvgGarmentPrice(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                 }
+                disabled={isDevelopmentOnly}
               />
             </div>
             <div className="space-y-2">
@@ -335,7 +427,8 @@ export function CapacityPlanningTool() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="production-only">Production Only</SelectItem>
-                  <SelectItem value="with-development">With Development</SelectItem>
+                  <SelectItem value="development-only">Development Only</SelectItem>
+                  <SelectItem value="production-and-development">Production and Development</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -354,6 +447,7 @@ export function CapacityPlanningTool() {
                 onChange={(e) =>
                   setDesiredWeeklySwatches(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                 }
+                disabled={isProductionOnly}
               />
             </div>
             <div className="space-y-2">
@@ -365,6 +459,7 @@ export function CapacityPlanningTool() {
                 onChange={(e) =>
                   setDesiredWeeklySamples(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                 }
+                disabled={isProductionOnly}
               />
             </div>
             <div className="space-y-2">
@@ -376,6 +471,7 @@ export function CapacityPlanningTool() {
                 onChange={(e) =>
                   setDesiredWeeklyGrading(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                 }
+                disabled={isProductionOnly}
               />
             </div>
           </div>
@@ -573,133 +669,40 @@ export function CapacityPlanningTool() {
 
               <Separator />
 
-              <h4 className="font-medium text-gray-700">Daily Machine Capacities (Units per Day)</h4>
-              <div className="space-y-4">
-                <h5 className="font-medium">1 Shift - Production Only</h5>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="e72-stoll-1shift-prod-only">E7.2 STOLL</Label>
-                    <Input
-                      id="e72-stoll-1shift-prod-only"
-                      type="number"
-                      value={e72Stoll1ShiftProdOnlyCapacity ?? ""}
-                      onChange={(e) =>
-                        setE72Stoll1ShiftProdOnlyCapacity(
-                          e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="e35-stoll-1shift-prod-only">E3.5,2 STOLL</Label>
-                    <Input
-                      id="e35-stoll-1shift-prod-only"
-                      type="number"
-                      value={e35Stoll1ShiftProdOnlyCapacity ?? ""}
-                      onChange={(e) =>
-                        setE35Stoll1ShiftProdOnlyCapacity(
-                          e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="e18-swg-1shift-prod-only">E18 SWG</Label>
-                    <Input
-                      id="e18-swg-1shift-prod-only"
-                      type="number"
-                      value={e18Swg1ShiftProdOnlyCapacity ?? ""}
-                      onChange={(e) =>
-                        setE18Swg1ShiftProdOnlyCapacity(
-                          e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                        )
-                      }
-                    />
-                  </div>
+              <h4 className="font-medium text-gray-700">Actual Machine Capacity (Units per Day)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="actual-e72-stoll">E7.2 STOLL</Label>
+                  <Input
+                    id="actual-e72-stoll"
+                    type="number"
+                    value={actualE72StollCapacity ?? ""}
+                    onChange={(e) =>
+                      setActualE72StollCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
+                  />
                 </div>
-              </div>
-
-              <div className="space-y-4">
-                <h5 className="font-medium">1 Shift - With Development</h5>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="e72-stoll-1shift-dev">E7.2 STOLL</Label>
-                    <Input
-                      id="e72-stoll-1shift-dev"
-                      type="number"
-                      value={e72Stoll1ShiftWithDevCapacity ?? ""}
-                      onChange={(e) =>
-                        setE72Stoll1ShiftWithDevCapacity(
-                          e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="e35-stoll-1shift-dev">E3.5,2 STOLL</Label>
-                    <Input
-                      id="e35-stoll-1shift-dev"
-                      type="number"
-                      value={e35Stoll1ShiftWithDevCapacity ?? ""}
-                      onChange={(e) =>
-                        setE35Stoll1ShiftWithDevCapacity(
-                          e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="e18-swg-1shift-dev">E18 SWG</Label>
-                    <Input
-                      id="e18-swg-1shift-dev"
-                      type="number"
-                      value={e18Swg1ShiftWithDevCapacity ?? ""}
-                      onChange={(e) =>
-                        setE18Swg1ShiftWithDevCapacity(
-                          e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                        )
-                      }
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="actual-e35-stoll">E3.5,2 STOLL</Label>
+                  <Input
+                    id="actual-e35-stoll"
+                    type="number"
+                    value={actualE35StollCapacity ?? ""}
+                    onChange={(e) =>
+                      setActualE35StollCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
+                  />
                 </div>
-              </div>
-
-              <div className="space-y-4">
-                <h5 className="font-medium">2 Shifts - All Production</h5>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="e72-stoll-2shifts">E7.2 STOLL</Label>
-                    <Input
-                      id="e72-stoll-2shifts"
-                      type="number"
-                      value={e72Stoll2ShiftsCapacity ?? ""}
-                      onChange={(e) =>
-                        setE72Stoll2ShiftsCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="e35-stoll-2shifts">E3.5,2 STOLL</Label>
-                    <Input
-                      id="e35-stoll-2shifts"
-                      type="number"
-                      value={e35Stoll2ShiftsCapacity ?? ""}
-                      onChange={(e) =>
-                        setE35Stoll2ShiftsCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="e18-swg-2shifts">E18 SWG</Label>
-                    <Input
-                      id="e18-swg-2shifts"
-                      type="number"
-                      value={e18Swg2ShiftsCapacity ?? ""}
-                      onChange={(e) =>
-                        setE18Swg2ShiftsCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="actual-e18-swg">E18 SWG</Label>
+                  <Input
+                    id="actual-e18-swg"
+                    type="number"
+                    value={actualE18SwgCapacity ?? ""}
+                    onChange={(e) =>
+                      setActualE18SwgCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
+                  />
                 </div>
               </div>
 
@@ -820,7 +823,7 @@ export function CapacityPlanningTool() {
                   <TableRow>
                     <TableCell className="pl-8">Knitting (Dev)</TableCell>
                     <TableCell className="text-right">
-                      {calculations.totalDevelopmentKnittingHoursWeekly.toFixed(1)}
+                      {((calculations.devKnittingMinutesDailyPayload / 60) * 5).toFixed(1)}
                     </TableCell>
                     <TableCell className="text-right"></TableCell>
                   </TableRow>
@@ -856,32 +859,223 @@ export function CapacityPlanningTool() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Total Annual Machine Capacity:</span>
-                  <Badge variant="secondary">{calculations.totalAnnualMachineCapacity.toLocaleString()} garments</Badge>
-                </div>
-                <p className="text-sm text-gray-500">
-                  This is the theoretical maximum based on machine knitting times and selected shifts.
-                </p>
+                <h4 className="font-medium text-gray-700 mb-2">Actual Machine Capacity (Units per Day)</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Machine Type</TableHead>
+                      <TableHead className="text-right">Units/Day</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>E7.2 STOLL</TableCell>
+                      <TableCell className="text-right">{actualE72StollCapacity ?? 0}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>E3.5,2 STOLL</TableCell>
+                      <TableCell className="text-right">{actualE35StollCapacity ?? 0}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>E18 SWG</TableCell>
+                      <TableCell className="text-right">{actualE18SwgCapacity ?? 0}</TableCell>
+                    </TableRow>
+                    <TableRow className="font-bold bg-gray-50">
+                      <TableCell>Total Actual</TableCell>
+                      <TableCell className="text-right">
+                        {(actualE72StollCapacity ?? 0) + (actualE35StollCapacity ?? 0) + (actualE18SwgCapacity ?? 0)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </div>
+
               <Separator className="my-4" />
-              <h4 className="font-medium text-gray-700 mb-2">Daily Machine Capacity (Selected Shift)</h4>
+
+              <h4 className="font-medium text-gray-700 mb-2">Development Payload (Units/Day)</h4>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Machine Type</TableHead>
-                    <TableHead className="text-right">Daily Units</TableHead>
+                    <TableHead className="text-right">Units/Day</TableHead>
+                    <TableHead className="text-right">Units/Week</TableHead>
+                    <TableHead className="text-right">Units/Year</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(calculations.effectiveDailyMachineCapacity).map(([machine, capacity]) => (
-                    <TableRow key={machine}>
-                      <TableCell>{machine}</TableCell>
-                      <TableCell className="text-right">{capacity}</TableCell>
-                    </TableRow>
-                  ))}
+                  <TableRow>
+                    <TableCell>E7.2 STOLL</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        value={devPayloadE72StollUnits ?? ""}
+                        onChange={(e) =>
+                          handleDevUnitsChange(
+                            "e72",
+                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
+                          )
+                        }
+                        disabled={isProductionOnly}
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{((devPayloadE72StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((devPayloadE72StollUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>E3.5,2 STOLL</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        value={devPayloadE35StollUnits ?? ""}
+                        onChange={(e) =>
+                          handleDevUnitsChange(
+                            "e35",
+                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
+                          )
+                        }
+                        disabled={isProductionOnly}
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{((devPayloadE35StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((devPayloadE35StollUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>E18 SWG</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        value={devPayloadE18SwgUnits ?? ""}
+                        onChange={(e) =>
+                          handleDevUnitsChange(
+                            "e18",
+                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
+                          )
+                        }
+                        disabled={isProductionOnly}
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{((devPayloadE18SwgUnits ?? 0) * 5).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((devPayloadE18SwgUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-gray-50">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-right">{calculations.totalDevUnitsDaily.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{(calculations.totalDevUnitsDaily * 5).toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{(calculations.totalDevUnitsDaily * 365).toFixed(1)}</TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
+
+              <Separator className="my-4" />
+
+              <h4 className="font-medium text-gray-700 mb-2">
+                {isProductionOnly ? "Production Payload (Daily)" : "Production Payload (Units/Day)"}
+              </h4>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Machine Type</TableHead>
+                    <TableHead className="text-right">Units/Day</TableHead>
+                    <TableHead className="text-right">Units/Week</TableHead>
+                    <TableHead className="text-right">Units/Year</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>E7.2 STOLL</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        value={prodPayloadE72StollUnits ?? ""}
+                        onChange={(e) =>
+                          handleProdUnitsChange(
+                            "e72",
+                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
+                          )
+                        }
+                        disabled={isDevelopmentOnly}
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{((prodPayloadE72StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((prodPayloadE72StollUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>E3.5,2 STOLL</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        value={prodPayloadE35StollUnits ?? ""}
+                        onChange={(e) =>
+                          handleProdUnitsChange(
+                            "e35",
+                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
+                          )
+                        }
+                        disabled={isDevelopmentOnly}
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{((prodPayloadE35StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((prodPayloadE35StollUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>E18 SWG</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        value={prodPayloadE18SwgUnits ?? ""}
+                        onChange={(e) =>
+                          handleProdUnitsChange(
+                            "e18",
+                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
+                          )
+                        }
+                        disabled={isDevelopmentOnly}
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{((prodPayloadE18SwgUnits ?? 0) * 5).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((prodPayloadE18SwgUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-gray-50">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-right">{calculations.totalProdUnitsDaily.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{calculations.totalWeeklyProductionUnits.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {calculations.totalAnnualProductionUnits.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+              {isProdAndDev && (
+                <div className="mt-4 space-y-2">
+                  {calculations.e72StollOverCapacity && (
+                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                      Warning: E7.2 STOLL combined payload (
+                      {(calculations.devPayloadE72StollUnits ?? 0) + (calculations.prodPayloadE72StollUnits ?? 0)}{" "}
+                      units) exceeds actual capacity ({actualE72StollCapacity ?? 0} units).
+                    </div>
+                  )}
+                  {calculations.e35StollOverCapacity && (
+                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                      Warning: E3.5,2 STOLL combined payload (
+                      {(calculations.devPayloadE35StollUnits ?? 0) + (calculations.prodPayloadE35StollUnits ?? 0)}{" "}
+                      units) exceeds actual capacity ({actualE35StollCapacity ?? 0} units).
+                    </div>
+                  )}
+                  {calculations.e18SwgOverCapacity && (
+                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                      Warning: E18 SWG combined payload (
+                      {(calculations.devPayloadE18SwgUnits ?? 0) + (calculations.prodPayloadE18SwgUnits ?? 0)} units)
+                      exceeds actual capacity ({actualE18SwgCapacity ?? 0} units).
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
