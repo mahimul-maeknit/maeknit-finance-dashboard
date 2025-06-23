@@ -43,9 +43,9 @@ export function CapacityPlanningTool() {
   const [e18SwgKnittingTime, setE18SwgKnittingTime] = useState<number | null>(30)
 
   // Daily Capacities (units per day)
-  const [e72Stoll1ShiftProdOnlyCapacity, setE72Stoll1ShiftProdOnlyCapacity] = useState<number | null>(16)
-  const [e35Stoll1ShiftProdOnlyCapacity, setE35Stoll1ShiftProdOnlyCapacity] = useState<number | null>(10)
-  const [e18Swg1ShiftProdOnlyCapacity, setE18Swg1ShiftProdOnlyCapacity] = useState<number | null>(16)
+  const [e72Stoll1ShiftProdOnlyCapacity, setE72Stoll1ShiftProdOnlyCapacity] = useState<number | null>(0)
+  const [e35Stoll1ShiftProdOnlyCapacity, setE35Stoll1ShiftProdOnlyCapacity] = useState<number | null>(0)
+  const [e18Swg1ShiftProdOnlyCapacity, setE18Swg1ShiftProdOnlyCapacity] = useState<number | null>(0)
 
   const [e72Stoll1ShiftWithDevCapacity, setE72Stoll1ShiftWithDevCapacity] = useState<number | null>(20)
   const [e35Stoll1ShiftWithDevCapacity, setE35Stoll1ShiftWithDevCapacity] = useState<number | null>(8)
@@ -54,6 +54,9 @@ export function CapacityPlanningTool() {
   const [e72Stoll2ShiftsCapacity, setE72Stoll2ShiftsCapacity] = useState<number | null>(27)
   const [e35Stoll2ShiftsCapacity, setE35Stoll2ShiftsCapacity] = useState<number | null>(12)
   const [e18Swg2ShiftsCapacity, setE18Swg2ShiftsCapacity] = useState<number | null>(19)
+
+  // Add state for development mix
+  const [developmentMix, setDevelopmentMix] = useState<string | null>("production-only")
 
   const handleResetToDefaults = () => {
     setLaborRatePerHour(30)
@@ -75,9 +78,10 @@ export function CapacityPlanningTool() {
     setE35StollKnittingTime(50)
     setE18SwgKnittingTime(30)
 
-    setE72Stoll1ShiftProdOnlyCapacity(16)
-    setE35Stoll1ShiftProdOnlyCapacity(10)
-    setE18Swg1ShiftProdOnlyCapacity(16)
+    // Reset 1 Shift - Production Only capacities to 0
+    setE72Stoll1ShiftProdOnlyCapacity(0)
+    setE35Stoll1ShiftProdOnlyCapacity(0)
+    setE18Swg1ShiftProdOnlyCapacity(0)
 
     setE72Stoll1ShiftWithDevCapacity(20)
     setE35Stoll1ShiftWithDevCapacity(8)
@@ -86,6 +90,9 @@ export function CapacityPlanningTool() {
     setE72Stoll2ShiftsCapacity(27)
     setE35Stoll2ShiftsCapacity(12)
     setE18Swg2ShiftsCapacity(19)
+
+    // Reset development mix
+    setDevelopmentMix("production-only")
   }
 
   const calculations = useMemo(() => {
@@ -149,18 +156,17 @@ export function CapacityPlanningTool() {
     // Determine effective daily machine capacity based on shifts and development mix
     let effectiveDailyMachineCapacity: { [key: string]: number }
     if (currentNumShifts === 1) {
-      // Assuming "with development" is the default for 1 shift if development units are > 0
       effectiveDailyMachineCapacity =
-        totalDevelopmentHoursWeekly > 0
+        developmentMix === "production-only"
           ? {
-              "E7.2 STOLL": e72Stoll1ShiftWithDevCapacity ?? 0,
-              "E3.5,2 STOLL": e35Stoll1ShiftWithDevCapacity ?? 0,
-              "E18 SWG": e18Swg1ShiftWithDevCapacity ?? 0,
-            }
-          : {
               "E7.2 STOLL": e72Stoll1ShiftProdOnlyCapacity ?? 0,
               "E3.5,2 STOLL": e35Stoll1ShiftProdOnlyCapacity ?? 0,
               "E18 SWG": e18Swg1ShiftProdOnlyCapacity ?? 0,
+            }
+          : {
+              "E7.2 STOLL": e72Stoll1ShiftWithDevCapacity ?? 0,
+              "E3.5,2 STOLL": e35Stoll1ShiftWithDevCapacity ?? 0,
+              "E18 SWG": e18Swg1ShiftWithDevCapacity ?? 0,
             }
     } else {
       // 2 shifts
@@ -263,6 +269,7 @@ export function CapacityPlanningTool() {
     e72Stoll2ShiftsCapacity,
     e35Stoll2ShiftsCapacity,
     e18Swg2ShiftsCapacity,
+    developmentMix, // Add developmentMix as a dependency
   ])
 
   return (
@@ -316,6 +323,21 @@ export function CapacityPlanningTool() {
                   setAvgGarmentPrice(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                 }
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Development Mix</Label>
+              <Select
+                value={developmentMix ?? ""}
+                onValueChange={(value) => setDevelopmentMix(value === "" ? null : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="production-only">Production Only</SelectItem>
+                  <SelectItem value="with-development">With Development</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

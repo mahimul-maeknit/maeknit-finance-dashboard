@@ -419,7 +419,7 @@ export default function FinanceDashboard() {
             <TabsTrigger value="capacity-planning">Capacity Planning</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="finance" className="space-y-6">
+          <TabsContent value="finance" className="space-y-6 p-4">
             {/* NESTED TABS FOR FINANCE DASHBOARD */}
             <Tabs defaultValue="overview" className="space-y-6">
               <TabsList className="flex flex-wrap justify-center w-full gap-2">
@@ -900,7 +900,7 @@ export default function FinanceDashboard() {
                   e72StollTime={e72StollTime}
                   setE72StollTime={setE72StollTime}
                   e35StollTime={e35StollTime}
-                  setE35StollTime={setE35StollTime}
+                  setE35StollTime={e35StollTime}
                   e18SwgTime={e18SwgTime}
                   setE18SwgTime={setE18SwgTime}
                   onSave={handleSaveSettings} // Pass the save function
@@ -910,11 +910,11 @@ export default function FinanceDashboard() {
             {/* END NESTED TABS FOR FINANCE DASHBOARD */}
           </TabsContent>
 
-          <TabsContent value="capacity-planning" className="space-y-6">
+          <TabsContent value="capacity-planning" className="space-y-6 p-4">
             <CapacityPlanningTool />
           </TabsContent>
 
-          <TabsContent value="garment-cost" className="space-y-6">
+          <TabsContent value="garment-cost" className="space-y-6 p-4">
             <GarmentCostCalculator />
           </TabsContent>
         </Tabs>
