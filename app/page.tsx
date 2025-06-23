@@ -481,7 +481,7 @@ export default function FinanceDashboard() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="samples">Samples/Week</Label>
+                      <Label htmlFor="samples">Development Services/Week</Label>
                       <Input
                         id="samples"
                         type="number"
