@@ -30,6 +30,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { GarmentCostCalculator } from "@/components/garment-cost-calculator" // Import the new component
+import { CapacityPlanningTool } from "@/components/capacity-planning-tool"
 
 // Define a type for the savable settings
 type SavableSettings = {
@@ -415,6 +416,7 @@ export default function FinanceDashboard() {
           <TabsList className="flex flex-wrap justify-center w-full gap-2">
             <TabsTrigger value="finance">Finance Dashboard</TabsTrigger>
             <TabsTrigger value="garment-cost">Garment Cost Calculator</TabsTrigger>
+            <TabsTrigger value="capacity-planning">Capacity Planning</TabsTrigger>
           </TabsList>
 
           <TabsContent value="finance" className="space-y-6">
@@ -906,6 +908,10 @@ export default function FinanceDashboard() {
               </TabsContent>
             </Tabs>
             {/* END NESTED TABS FOR FINANCE DASHBOARD */}
+          </TabsContent>
+
+          <TabsContent value="capacity-planning" className="space-y-6">
+            <CapacityPlanningTool />
           </TabsContent>
 
           <TabsContent value="garment-cost" className="space-y-6">
