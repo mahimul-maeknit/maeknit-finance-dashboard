@@ -21,6 +21,9 @@ export function CapacityPlanningTool() {
   // Adjustable Parameters
   const [laborRatePerHour, setLaborRatePerHour] = useState<number | null>(30)
   const [workHoursPerWeekPerPerson, setWorkHoursPerWeekPerPerson] = useState<number | null>(40)
+  const [swatchPrice, setSwatchPrice] = useState<number | null>(100)
+  const [samplePrice, setSamplePrice] = useState<number | null>(2000)
+  const [gradingPrice, setGradingPrice] = useState<number | null>(500)
 
   // Service Time Details (in minutes) - Used for labor hour calculations, not direct machine allocation
   const [swatchProgrammingMin, setSwatchProgrammingMin] = useState<number | null>(30)
@@ -138,6 +141,9 @@ export function CapacityPlanningTool() {
   const handleResetToDefaults = () => {
     setLaborRatePerHour(30)
     setWorkHoursPerWeekPerPerson(40)
+    setSwatchPrice(100)
+    setSamplePrice(2000)
+    setGradingPrice(500)
 
     setSwatchProgrammingMin(30)
     setSwatchKnittingMin(25)
@@ -225,15 +231,19 @@ export function CapacityPlanningTool() {
     const totalDevelopmentHoursWeekly =
       totalDevelopmentProgrammingHoursWeekly + totalDevelopmentKnittingHoursWeekly + totalDevelopmentLinkingHoursWeekly
 
-    // Service pricing (using fixed prices for now, could be linked to main settings later)
-    const swatchPrice = 250
-    const samplePrice = 2000
-    const gradingPrice = 2500
+    // Service pricing (using state variables)
+    const currentSwatchPrice = swatchPrice ?? 0
+    const currentSamplePrice = samplePrice ?? 0
+    const currentGradingPrice = gradingPrice ?? 0
 
-    const developmentRevenueWeekly =
-      (desiredWeeklySwatches ?? 0) * swatchPrice +
-      (desiredWeeklySamples ?? 0) * samplePrice +
-      (desiredWeeklyGrading ?? 0) * gradingPrice
+    let developmentRevenueWeekly =
+      (desiredWeeklySwatches ?? 0) * currentSwatchPrice +
+      (desiredWeeklySamples ?? 0) * currentSamplePrice +
+      (desiredWeeklyGrading ?? 0) * currentGradingPrice
+
+    if (developmentMix === "production-only") {
+        developmentRevenueWeekly = 0
+    }
 
     const developmentRevenueAnnual = developmentRevenueWeekly * 52
 
@@ -270,7 +280,11 @@ export function CapacityPlanningTool() {
     // Final achievable production units is the minimum of machine capacity (from inputs) and labor capacity
     const achievableProductionUnitsAnnual = Math.min(totalAnnualProductionUnits, achievableProductionUnitsAnnualByLabor)
 
-    const productionRevenueAnnual = achievableProductionUnitsAnnual * currentAvgGarmentPrice
+    let productionRevenueAnnual = achievableProductionUnitsAnnual * currentAvgGarmentPrice
+    
+    if (developmentMix === "development-only") {
+        productionRevenueAnnual = 0
+    }
     const totalProjectedRevenue = productionRevenueAnnual + developmentRevenueAnnual
 
     // Calculate hours needed to reach target revenue
@@ -337,6 +351,12 @@ export function CapacityPlanningTool() {
       e72StollOverCapacity,
       e35StollOverCapacity,
       e18SwgOverCapacity,
+      devPayloadE72StollUnits,
+      prodPayloadE72StollUnits,
+      devPayloadE35StollUnits,
+      prodPayloadE35StollUnits,
+      devPayloadE18SwgUnits,
+      prodPayloadE18SwgUnits,
     }
   }, [
     targetAnnualRevenue,
@@ -369,6 +389,9 @@ export function CapacityPlanningTool() {
     prodPayloadE72StollUnits,
     prodPayloadE35StollUnits,
     prodPayloadE18SwgUnits,
+    swatchPrice,
+    samplePrice,
+    gradingPrice,
   ])
 
   const isProductionOnly = developmentMix === "production-only"
@@ -451,7 +474,7 @@ export function CapacityPlanningTool() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="weekly-samples">Samples</Label>
+              <Label htmlFor="weekly-samples">Development Service</Label>
               <Input
                 id="weekly-samples"
                 type="number"
@@ -463,7 +486,7 @@ export function CapacityPlanningTool() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="weekly-grading">Grading Sets</Label>
+              <Label htmlFor="weekly-grading">Grading Service</Label>
               <Input
                 id="weekly-grading"
                 type="number"
@@ -625,6 +648,48 @@ export function CapacityPlanningTool() {
                       }
                     />
                   </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <h4 className="font-medium text-gray-700">Service Pricing ($)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="swatch-price">Swatch Price</Label>
+                  <Input
+                    id="swatch-price"
+                    type="number"
+                    step="0.01"
+                    value={swatchPrice ?? ""}
+                    onChange={(e) =>
+                      setSwatchPrice(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sample-price">Development Service Price</Label>
+                  <Input
+                    id="sample-price"
+                    type="number"
+                    step="0.01"
+                    value={samplePrice ?? ""}
+                    onChange={(e) =>
+                      setSamplePrice(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="grading-price">Grading Service Price</Label>
+                  <Input
+                    id="grading-price"
+                    type="number"
+                    step="0.01"
+                    value={gradingPrice ?? ""}
+                    onChange={(e) =>
+                      setGradingPrice(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    }
+                  />
                 </div>
               </div>
 
