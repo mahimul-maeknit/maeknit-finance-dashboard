@@ -8,7 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts"
 import { SensitivityAnalysis } from "@/components/sensitivity-analysis"
 import { CashFlowProjection } from "@/components/cash-flow-projection"
 import { MachineROICalculator } from "@/components/machine-roi-calculator"
@@ -63,7 +75,7 @@ export default function FinanceDashboard() {
     "elias@maeknit.io",
     "tech@maeknit.io",
     "intel@maeknit.io",
-    "mattb@maeknit.io",
+    "matt@maeknit.io",
     "matt.blodgett@praxisvcge.com",
   ]
 
@@ -209,17 +221,17 @@ export default function FinanceDashboard() {
   const { BASE_EXPENSES, SERVICE_PRICING } = calculations
 
   const expenseBreakdown = [
-    { name: "Team Labor", value: BASE_EXPENSES.teamLabor, color: "#8884d8" },
-    { name: "Rent", value: BASE_EXPENSES.rent, color: "#82ca9d" },
-    { name: "Electricity", value: BASE_EXPENSES.electricity, color: "#ffc658" },
-    { name: "Water", value: BASE_EXPENSES.water, color: "#ff7300" },
-    { name: "Materials", value: BASE_EXPENSES.materialCost, color: "#00ff00" },
-    { name: "Overhead", value: BASE_EXPENSES.overhead, color: "#ff0000" },
+    { name: "Team Labor", value: BASE_EXPENSES.teamLabor, color: "#6A5ACD" }, // Slate Blue
+    { name: "Rent", value: BASE_EXPENSES.rent, color: "#3CB371" }, // Medium Sea Green
+    { name: "Electricity", value: BASE_EXPENSES.electricity, color: "#FFD700" }, // Gold
+    { name: "Water", value: BASE_EXPENSES.water, color: "#4682B4" }, // Steel Blue
+    { name: "Materials", value: BASE_EXPENSES.materialCost, color: "#9ACD32" }, // Yellow Green
+    { name: "Overhead", value: BASE_EXPENSES.overhead, color: "#DC143C" }, // Crimson
   ]
 
   const revenueBreakdown = [
-    { name: "Production", value: calculations.productionRevenue, color: "#8884d8" },
-    { name: "Development", value: calculations.developmentRevenue, color: "#82ca9d" },
+    { name: "Production", value: calculations.productionRevenue, color: "#4169E1" }, // Royal Blue
+    { name: "Development", value: calculations.developmentRevenue, color: "#20B2AA" }, // Light Sea Green
   ]
 
   const scenarioComparison = [
@@ -690,9 +702,10 @@ export default function FinanceDashboard() {
                             data={expenseBreakdown}
                             cx="50%"
                             cy="50%"
-                            outerRadius={80}
+                            outerRadius={100} // Increased outerRadius for more space
                             fill="#8884d8"
                             dataKey="value"
+                            labelLine={true} // Enabled labelLine
                             label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                           >
                             {expenseBreakdown.map((entry, index) => (
@@ -700,6 +713,7 @@ export default function FinanceDashboard() {
                             ))}
                           </Pie>
                           <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
+                          <Legend />
                         </PieChart>
                       </ResponsiveContainer>
                     </CardContent>
@@ -716,9 +730,10 @@ export default function FinanceDashboard() {
                             data={revenueBreakdown}
                             cx="50%"
                             cy="50%"
-                            outerRadius={80}
+                            outerRadius={100} // Increased outerRadius for more space
                             fill="#8884d8"
                             dataKey="value"
+                            labelLine={true} // Enabled labelLine
                             label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                           >
                             {revenueBreakdown.map((entry, index) => (
@@ -726,6 +741,7 @@ export default function FinanceDashboard() {
                             ))}
                           </Pie>
                           <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, ""]} />
+                          <Legend />
                         </PieChart>
                       </ResponsiveContainer>
                     </CardContent>
