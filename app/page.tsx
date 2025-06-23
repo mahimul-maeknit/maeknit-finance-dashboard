@@ -900,7 +900,7 @@ export default function FinanceDashboard() {
                   e72StollTime={e72StollTime}
                   setE72StollTime={setE72StollTime}
                   e35StollTime={e35StollTime}
-                  setE35StollTime={e35StollTime}
+                  setE35StollTime={setE35StollTime}
                   e18SwgTime={e18SwgTime}
                   setE18SwgTime={setE18SwgTime}
                   onSave={handleSaveSettings} // Pass the save function
