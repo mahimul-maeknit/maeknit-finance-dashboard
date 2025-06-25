@@ -377,7 +377,7 @@ export function CapacityPlanningTool() {
   const e18SwgDailyTotalTime = calculations.prodPayloadE18SwgUnitsDisplay * PROD_KNITTING_TIME_E18
   const totalDailyProductionTime = e72StollDailyTotalTime + e35StollDailyTotalTime + e18SwgDailyTotalTime
   const totalWeeklyProductionTime = totalDailyProductionTime * 5
-  const totalAnnualProductionTime = totalWeeklyProductionTime * 52
+  // const totalAnnualProductionTime = totalWeeklyProductionTime * 52
 
   return (
     <div className="space-y-6">
@@ -839,8 +839,8 @@ export function CapacityPlanningTool() {
                   </TableRow>
                   <TableRow className="font-bold bg-gray-50">
                     <TableCell>Total Development Time</TableCell>
-                    <TableCell></TableCell> {/* Empty cell for # of item */}
-                    <TableCell></TableCell> {/* Empty cell for Time taken per unit */}
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
                     <TableCell className="text-right">
                       {calculations.totalDevelopmentMinutesWeekly.toFixed(1)}
                     </TableCell>
@@ -848,8 +848,8 @@ export function CapacityPlanningTool() {
                   </TableRow>
                   <TableRow className="font-bold bg-blue-50">
                     <TableCell>Remaining Machine Time</TableCell>
-                    <TableCell></TableCell> {/* Empty cell for # of item */}
-                    <TableCell></TableCell> {/* Empty cell for Time taken per unit */}
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
                     <TableCell className="text-right">{remainingMachineMinutesWeekly.toFixed(1)}</TableCell>
                     <TableCell className="text-right">{remainingMachineHoursWeekly.toFixed(1)}</TableCell>
                   </TableRow>
@@ -1164,7 +1164,7 @@ export function CapacityPlanningTool() {
                         calculations.prodPayloadE18SwgUnitsDisplay
                       ).toFixed(1)}
                     </TableCell>
-                    <TableCell></TableCell> {/* Empty cell for Time per Unit */}
+                    <TableCell></TableCell>
                     <TableCell className="text-right">{totalDailyProductionTime.toFixed(1)}</TableCell>
                     <TableCell className="text-right">{calculations.totalWeeklyProductionUnits.toFixed(1)}</TableCell>
                     <TableCell className="text-right">
@@ -1187,7 +1187,6 @@ export function CapacityPlanningTool() {
                     <TableCell></TableCell>
                     <TableCell></TableCell>
                   </TableRow>
-                  
                 </TableBody>
               </Table>
             </CardContent>
