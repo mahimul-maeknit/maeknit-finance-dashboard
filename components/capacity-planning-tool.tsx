@@ -62,6 +62,14 @@ export function CapacityPlanningTool() {
   // Fixed total machine minutes per week as per user's statement
   const TOTAL_FIXED_MACHINE_MINUTES_WEEKLY = 12000
 
+  // New state variables for expenses
+  const [teamLabor, setTeamLabor] = useState<number | null>(50684)
+  const [rent, setRent] = useState<number | null>(7000)
+  const [electricity, setElectricity] = useState<number | null>(450)
+  const [water, setWater] = useState<number | null>(431)
+  const [materialCost, setMaterialCost] = useState<number | null>(2000)
+  const [overhead, setOverhead] = useState<number | null>(4240) // T&E + G&A
+
   // Effect to update desired development units when developmentMix changes
   useEffect(() => {
     if (developmentMix === "production-only") {
@@ -109,6 +117,14 @@ export function CapacityPlanningTool() {
     setE18SwgHoursPerDay(8)
 
     setDevelopmentMix("production-only") // This will trigger the useEffect to reset desiredWeeklyDev units
+
+    // Reset expense states
+    setTeamLabor(50684)
+    setRent(7000)
+    setElectricity(450)
+    setWater(431)
+    setMaterialCost(2000)
+    setOverhead(4240)
   }, [])
 
   const applyScenarioDefaults = useCallback((scenario: "production-only" | "dev-worst-case" | "dev-best-case") => {
@@ -131,6 +147,14 @@ export function CapacityPlanningTool() {
     setSwatchKnittingMin(25)
     setSampleKnittingMin(100)
     setGradingKnittingMin(450)
+
+    // Reset expense states
+    setTeamLabor(50684)
+    setRent(7000)
+    setElectricity(450)
+    setWater(431)
+    setMaterialCost(2000)
+    setOverhead(4240)
 
     if (scenario === "production-only") {
       setDevelopmentMix("production-only")
@@ -268,6 +292,16 @@ export function CapacityPlanningTool() {
     }
     const totalProjectedRevenue = productionRevenueAnnual + developmentRevenueAnnual
 
+    // Calculate total expenses
+    const totalMonthlyExpenses =
+      (teamLabor ?? 0) + (rent ?? 0) + (electricity ?? 0) + (water ?? 0) + (materialCost ?? 0) + (overhead ?? 0)
+    const totalAnnualExpenses = totalMonthlyExpenses * 12
+    const totalWeeklyExpenses = totalAnnualExpenses / 52
+
+    // Calculate profit based on total projected revenue and total annual expenses
+    const profit = totalProjectedRevenue - totalAnnualExpenses
+    const profitMargin = totalProjectedRevenue !== 0 ? (profit / totalProjectedRevenue) * 100 : 0
+
     // Calculate hours needed to reach target revenue
     let hoursToReachTargetRevenue = 0
     if (targetAnnualRevenue !== null && targetAnnualRevenue > developmentRevenueAnnual) {
@@ -328,6 +362,11 @@ export function CapacityPlanningTool() {
       maxSwatchesIfOnlySwatches, // New
       maxSamplesIfOnlySamples, // New
       maxGradingIfOnlyGrading, // New
+      totalMonthlyExpenses, // New
+      totalAnnualExpenses, // New
+      totalWeeklyExpenses, // New
+      profit, // Updated
+      profitMargin, // Updated
     }
   }, [
     targetAnnualRevenue,
@@ -354,6 +393,12 @@ export function CapacityPlanningTool() {
     swatchPrice,
     samplePrice,
     gradingPrice,
+    teamLabor, // New dependency
+    rent, // New dependency
+    electricity, // New dependency
+    water, // New dependency
+    materialCost, // New dependency
+    overhead, // New dependency
   ])
 
   const isProductionOnly = developmentMix === "production-only"
@@ -529,6 +574,70 @@ export function CapacityPlanningTool() {
                     onChange={(e) =>
                       setWorkHoursPerWeekPerPerson(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                     }
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              <h4 className="font-medium text-gray-700">Monthly Expenses ($)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="team-labor">Team Labor</Label>
+                  <Input
+                    id="team-labor"
+                    type="number"
+                    value={teamLabor ?? ""}
+                    onChange={(e) => setTeamLabor(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rent">Rent</Label>
+                  <Input
+                    id="rent"
+                    type="number"
+                    value={rent ?? ""}
+                    onChange={(e) => setRent(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="electricity">Electricity</Label>
+                  <Input
+                    id="electricity"
+                    type="number"
+                    value={electricity ?? ""}
+                    onChange={(e) =>
+                      setElectricity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="water">Water</Label>
+                  <Input
+                    id="water"
+                    type="number"
+                    value={water ?? ""}
+                    onChange={(e) => setWater(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="material-cost">Material Cost</Label>
+                  <Input
+                    id="material-cost"
+                    type="number"
+                    value={materialCost ?? ""}
+                    onChange={(e) =>
+                      setMaterialCost(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="overhead">T&E + G&A</Label>
+                  <Input
+                    id="overhead"
+                    type="number"
+                    value={overhead ?? ""}
+                    onChange={(e) => setOverhead(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)}
                   />
                 </div>
               </div>
@@ -911,8 +1020,48 @@ export function CapacityPlanningTool() {
             </Card>
 
             <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Annual Expenses</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  ${calculations.totalAnnualExpenses.toLocaleString()}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Monthly: ${calculations.totalMonthlyExpenses.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Weekly Expenses</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  ${calculations.totalWeeklyExpenses.toLocaleString()}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Annual: ${calculations.totalAnnualExpenses.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Annual Profit</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${calculations.profit > 0 ? "text-green-600" : "text-red-600"}`}>
+                  ${calculations.profit.toLocaleString()}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">Margin: {calculations.profitMargin.toFixed(1)}%</div>
+              </CardContent>
+            </Card>
+
+            <Card>
               <CardHeader>
-                <CardTitle>Total Available Labor Hours (Annual)</CardTitle>
+                <CardTitle>Total Available Machine Hours (Annual)</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-800">
