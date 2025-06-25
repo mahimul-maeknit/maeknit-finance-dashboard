@@ -30,30 +30,35 @@ export function CapacityPlanningTool() {
   const [sampleKnittingMin, setSampleKnittingMin] = useState<number | null>(100)
   const [gradingKnittingMin, setGradingKnittingMin] = useState<number | null>(450)
 
-  // Number of Machines (formerly Machine Knitting Times in UI)
+  // Number of Machines
   const [numE72StollMachines, setNumE72StollMachines] = useState<number | null>(3)
   const [numE35StollMachines, setNumE35StollMachines] = useState<number | null>(1)
   const [numE18SwgMachines, setNumE18SwgMachines] = useState<number | null>(1)
+
+  // NEW: Capacity per Machine (Units per Day)
+  const [e72StollCapacityPerMachine, setE72StollCapacityPerMachine] = useState<number | null>(8)
+  const [e35StollCapacityPerMachine, setE35StollCapacityPerMachine] = useState<number | null>(10)
+  const [e18SwgCapacityPerMachine, setE18SwgCapacityPerMachine] = useState<number | null>(16)
 
   // Internal constants for actual knitting times per garment (from spreadsheet)
   const E72_STOLL_KNITTING_TIME_PER_GARMENT = 3
   const E35_STOLL_KNITTING_TIME_PER_GARMENT = 1
   const E18_SWG_KNITTING_TIME_PER_GARMENT = 1
 
-  // Actual Machine Capacity (Units per Day) - these are the base capacities
-  const [actualE72StollCapacity, setActualE72StollCapacity] = useState<number | null>(24)
-  const [actualE35StollCapacity, setActualE35StollCapacity] = useState<number | null>(10)
-  const [actualE18SwgCapacity, setActualE18SwgCapacity] = useState<number | null>(16)
+  // Derived Actual Machine Capacity (Units per Day)
+  const derivedE72StollActualCapacity = (numE72StollMachines ?? 0) * (e72StollCapacityPerMachine ?? 0)
+  const derivedE35StollActualCapacity = (numE35StollMachines ?? 0) * (e35StollCapacityPerMachine ?? 0)
+  const derivedE18SwgActualCapacity = (numE18SwgMachines ?? 0) * (e18SwgCapacityPerMachine ?? 0)
 
-  // New states for editable Development Payload (Units per Day) per machine
+  // Existing states for Development Payload (Units per Day) per machine
   const [devPayloadE72StollUnits, setDevPayloadE72StollUnits] = useState<number | null>(0)
   const [devPayloadE35StollUnits, setDevPayloadE35StollUnits] = useState<number | null>(0)
   const [devPayloadE18SwgUnits, setDevPayloadE18SwgUnits] = useState<number | null>(0)
 
-  // New states for editable Production Payload (Units per Day) per machine
-  const [prodPayloadE72StollUnits, setProdPayloadE72StollUnits] = useState<number | null>(24)
-  const [prodPayloadE35StollUnits, setProdPayloadE35StollUnits] = useState<number | null>(10)
-  const [prodPayloadE18SwgUnits, setProdPayloadE18SwgUnits] = useState<number | null>(16)
+  // Existing states for Production Payload (Units per Day) per machine
+  const [prodPayloadE72StollUnits, setProdPayloadE72StollUnits] = useState<number | null>(derivedE72StollActualCapacity)
+  const [prodPayloadE35StollUnits, setProdPayloadE35StollUnits] = useState<number | null>(derivedE35StollActualCapacity)
+  const [prodPayloadE18SwgUnits, setProdPayloadE18SwgUnits] = useState<number | null>(derivedE18SwgActualCapacity)
 
   // Development Mix
   const [developmentMix, setDevelopmentMix] = useState<string | null>("production-only")
@@ -61,80 +66,85 @@ export function CapacityPlanningTool() {
   // Helper function to handle interdependent changes for development units
   const handleDevUnitsChange = useCallback(
     (machine: "e72" | "e35" | "e18", value: number | null) => {
-      const actualCap =
-        machine === "e72"
-          ? (actualE72StollCapacity ?? 0)
-          : machine === "e35"
-            ? (actualE35StollCapacity ?? 0)
-            : (actualE18SwgCapacity ?? 0)
-
       const newDevUnits = value ?? 0
+      let actualCap = 0
+      let setDev: (val: number | null) => void
+      let setProd: (val: number | null) => void
+
+      if (machine === "e72") {
+        actualCap = derivedE72StollActualCapacity
+        setDev = setDevPayloadE72StollUnits
+        setProd = setProdPayloadE72StollUnits
+      } else if (machine === "e35") {
+        actualCap = derivedE35StollActualCapacity
+        setDev = setDevPayloadE35StollUnits
+        setProd = setProdPayloadE35StollUnits
+      } else {
+        actualCap = derivedE18SwgActualCapacity
+        setDev = setDevPayloadE18SwgUnits
+        setProd = setProdPayloadE18SwgUnits
+      }
+
       const cappedDevUnits = Math.min(newDevUnits, actualCap)
       const newProdUnits = Math.max(0, actualCap - cappedDevUnits)
 
-      if (machine === "e72") {
-        setDevPayloadE72StollUnits(cappedDevUnits)
-        setProdPayloadE72StollUnits(newProdUnits)
-      } else if (machine === "e35") {
-        setDevPayloadE35StollUnits(cappedDevUnits)
-        setProdPayloadE35StollUnits(newProdUnits)
-      } else {
-        setDevPayloadE18SwgUnits(cappedDevUnits)
-        setProdPayloadE18SwgUnits(newProdUnits)
-      }
+      setDev(cappedDevUnits)
+      setProd(newProdUnits)
     },
-    [actualE72StollCapacity, actualE35StollCapacity, actualE18SwgCapacity],
+    [derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity],
   )
 
   // Helper function to handle interdependent changes for production units
   const handleProdUnitsChange = useCallback(
     (machine: "e72" | "e35" | "e18", value: number | null) => {
-      const actualCap =
-        machine === "e72"
-          ? (actualE72StollCapacity ?? 0)
-          : machine === "e35"
-            ? (actualE35StollCapacity ?? 0)
-            : (actualE18SwgCapacity ?? 0)
-
       const newProdUnits = value ?? 0
+      let actualCap = 0
+      let setDev: (val: number | null) => void
+      let setProd: (val: number | null) => void
+
+      if (machine === "e72") {
+        actualCap = derivedE72StollActualCapacity
+        setDev = setDevPayloadE72StollUnits
+        setProd = setProdPayloadE72StollUnits
+      } else if (machine === "e35") {
+        actualCap = derivedE35StollActualCapacity
+        setDev = setDevPayloadE35StollUnits
+        setProd = setProdPayloadE35StollUnits
+      } else {
+        actualCap = derivedE18SwgActualCapacity
+        setDev = setDevPayloadE18SwgUnits
+        setProd = setProdPayloadE18SwgUnits
+      }
+
       const cappedProdUnits = Math.min(newProdUnits, actualCap)
       const newDevUnits = Math.max(0, actualCap - cappedProdUnits)
 
-      if (machine === "e72") {
-        setProdPayloadE72StollUnits(cappedProdUnits)
-        setDevPayloadE72StollUnits(newDevUnits)
-      } else if (machine === "e35") {
-        setProdPayloadE35StollUnits(cappedProdUnits)
-        setDevPayloadE35StollUnits(newDevUnits)
-      } else {
-        setProdPayloadE18SwgUnits(cappedProdUnits)
-        setDevPayloadE18SwgUnits(newDevUnits)
-      }
+      setProd(cappedProdUnits)
+      setDev(newDevUnits)
     },
-    [actualE72StollCapacity, actualE35StollCapacity, actualE18SwgCapacity],
+    [derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity],
   )
 
-  // Effect to update payload states when developmentMix changes
+  // Effect to update payload states when developmentMix changes or derived capacities change
   useEffect(() => {
     if (developmentMix === "production-only") {
       setDevPayloadE72StollUnits(0)
       setDevPayloadE35StollUnits(0)
       setDevPayloadE18SwgUnits(0)
-      setProdPayloadE72StollUnits(actualE72StollCapacity)
-      setProdPayloadE35StollUnits(actualE35StollCapacity)
-      setProdPayloadE18SwgUnits(actualE18SwgCapacity)
+      setProdPayloadE72StollUnits(derivedE72StollActualCapacity)
+      setProdPayloadE35StollUnits(derivedE35StollActualCapacity)
+      setProdPayloadE18SwgUnits(derivedE18SwgActualCapacity)
     } else if (developmentMix === "development-only") {
       setProdPayloadE72StollUnits(0)
       setProdPayloadE35StollUnits(0)
       setProdPayloadE18SwgUnits(0)
-      setDevPayloadE72StollUnits(actualE72StollCapacity)
-      setDevPayloadE35StollUnits(actualE35StollCapacity)
-      setDevPayloadE18SwgUnits(actualE18SwgCapacity)
+      setDevPayloadE72StollUnits(derivedE72StollActualCapacity)
+      setDevPayloadE35StollUnits(derivedE35StollActualCapacity)
+      setDevPayloadE18SwgUnits(derivedE18SwgActualCapacity)
     } else {
-      // "production-and-development" - default to 0 dev, full prod, user can adjust
-      // This case is handled by the scenario buttons for specific splits
+      // "production-and-development" - no automatic reset, user can adjust
     }
-  }, [developmentMix, actualE72StollCapacity, actualE35StollCapacity, actualE18SwgCapacity])
+  }, [developmentMix, derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity])
 
   const handleResetToDefaults = useCallback(() => {
     setTargetAnnualRevenue(100000)
@@ -158,78 +168,72 @@ export function CapacityPlanningTool() {
     setNumE35StollMachines(1)
     setNumE18SwgMachines(1)
 
-    setActualE72StollCapacity(24)
-    setActualE35StollCapacity(10)
-    setActualE18SwgCapacity(16)
+    // Reset Capacity per Machine to defaults
+    setE72StollCapacityPerMachine(8)
+    setE35StollCapacityPerMachine(10)
+    setE18SwgCapacityPerMachine(16)
 
-    // Reset new editable fields based on current development mix
-    setDevelopmentMix("production-only") // Default to production-only on reset
+    // Reset development mix and corresponding payloads based on new derived capacities
+    setDevelopmentMix("production-only")
     setDevPayloadE72StollUnits(0)
     setDevPayloadE35StollUnits(0)
     setDevPayloadE18SwgUnits(0)
-    setProdPayloadE72StollUnits(24)
-    setProdPayloadE35StollUnits(10)
-    setProdPayloadE18SwgUnits(16)
-  }, [])
+    setProdPayloadE72StollUnits(derivedE72StollActualCapacity)
+    setProdPayloadE35StollUnits(derivedE35StollActualCapacity)
+    setProdPayloadE18SwgUnits(derivedE18SwgActualCapacity)
+  }, [derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity])
 
   const applyScenarioDefaults = useCallback(
     (scenario: "production-only" | "dev-worst-case" | "dev-best-case") => {
-      handleResetToDefaults() // Start from a clean slate of defaults
+      // Set base machine numbers and capacities first, then reset to defaults
+      // to ensure derived capacities are correct before setting payloads
+      setNumE72StollMachines(3)
+      setNumE35StollMachines(1)
+      setNumE18SwgMachines(1)
+      setE72StollCapacityPerMachine(8)
+      setE35StollCapacityPerMachine(10)
+      setE18SwgCapacityPerMachine(16)
+
+      // Now call handleResetToDefaults to reset other parameters and payloads
+      // This will use the newly set machine capacities to derive actual capacities
+      handleResetToDefaults()
 
       if (scenario === "production-only") {
         setDevelopmentMix("production-only")
         setDesiredWeeklySwatches(0)
         setDesiredWeeklySamples(0)
         setDesiredWeeklyGrading(0)
-        setNumE72StollMachines(3)
-        setNumE35StollMachines(1)
-        setNumE18SwgMachines(1)
-        setDevPayloadE72StollUnits(0)
-        setDevPayloadE35StollUnits(0)
-        setDevPayloadE18SwgUnits(0)
-        setProdPayloadE72StollUnits(24)
-        setProdPayloadE35StollUnits(10)
-        setProdPayloadE18SwgUnits(16)
         setSwatchPrice(100) // Default price
         setSamplePrice(2000) // Default price
         setGradingPrice(500) // Default price
+        // Payloads are set by useEffect based on developmentMix
       } else if (scenario === "dev-worst-case") {
         setDevelopmentMix("production-and-development")
         setDesiredWeeklySwatches(14)
         setDesiredWeeklySamples(6)
         setDesiredWeeklyGrading(4)
-        setNumE72StollMachines(3) // Number of machines from spreadsheet
-        setNumE35StollMachines(1)
-        setNumE18SwgMachines(1)
-        setProdPayloadE72StollUnits(16) // Production units from spreadsheet
-        setProdPayloadE35StollUnits(2)
-        setProdPayloadE18SwgUnits(3)
-        setDevPayloadE72StollUnits(8) // Implied dev units (24-16)
-        setDevPayloadE35StollUnits(8) // Implied dev units (10-2)
-        setDevPayloadE18SwgUnits(13) // Implied dev units (16-3)
         setSwatchPrice(250) // Spreadsheet price
         setSamplePrice(2000) // Spreadsheet price
         setGradingPrice(2500) // Spreadsheet price
+        // Manually set payloads for this specific scenario
+        setProdPayloadE72StollUnits(16)
+        setProdPayloadE35StollUnits(2)
+        setProdPayloadE18SwgUnits(3)
+        setDevPayloadE72StollUnits(derivedE72StollActualCapacity - 16) // Derived from 24-16
+        setDevPayloadE35StollUnits(derivedE35StollActualCapacity - 2) // Derived from 10-2
+        setDevPayloadE18SwgUnits(derivedE18SwgActualCapacity - 3) // Derived from 16-3
       } else if (scenario === "dev-best-case") {
         setDevelopmentMix("development-only")
         setDesiredWeeklySwatches(80)
         setDesiredWeeklySamples(19)
         setDesiredWeeklyGrading(18)
-        setNumE72StollMachines(3) // Number of machines from spreadsheet
-        setNumE35StollMachines(1)
-        setNumE18SwgMachines(1)
-        setProdPayloadE72StollUnits(0)
-        setProdPayloadE35StollUnits(0)
-        setProdPayloadE18SwgUnits(0)
-        setDevPayloadE72StollUnits(24) // Full capacity for dev
-        setDevPayloadE35StollUnits(10)
-        setDevPayloadE18SwgUnits(16)
         setSwatchPrice(250) // Spreadsheet price
         setSamplePrice(2000) // Spreadsheet price
         setGradingPrice(2500) // Spreadsheet price
+        // Payloads are set by useEffect based on developmentMix
       }
     },
-    [handleResetToDefaults],
+    [handleResetToDefaults, derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity],
   )
 
   const calculations = useMemo(() => {
@@ -281,17 +285,9 @@ export function CapacityPlanningTool() {
     const totalProdUnitsDaily =
       (prodPayloadE72StollUnits ?? 0) + (prodPayloadE35StollUnits ?? 0) + (prodPayloadE18SwgUnits ?? 0)
 
-    // Calculate minutes consumed by development units (for labor calculations, not machine capacity)
-    // Remove the `devKnittingMinutesDailyPayload` calculation.
-    // It was previously defined as:
-    // const devKnittingMinutesDailyPayload =
-    //   (devPayloadE72StollUnits ?? 0) * E72_STOLL_KNITTING_TIME_PER_GARMENT +
-    //   (devPayloadE35StollUnits ?? 0) * E35_STOLL_KNITTING_TIME_PER_GARMENT +
-    //   (devPayloadE18SwgUnits ?? 0) * E18_SWG_KNITTING_TIME_PER_GARMENT
-
     const totalWeeklyProductionUnits = totalProdUnitsDaily * 5
     const totalMonthlyProductionUnits = totalProdUnitsDaily * (365 / 12)
-    const totalAnnualProductionUnits = totalProdUnitsDaily * 365
+    const totalAnnualProductionUnits = totalProdUnitsDaily * 5 * 52
 
     // Calculate production units achievable with remaining labor hours
     const avgKnittingTimePerGarment =
@@ -331,22 +327,14 @@ export function CapacityPlanningTool() {
     const isTargetAchievable = totalProjectedRevenue >= (targetAnnualRevenue ?? 0)
     const revenueGap = (targetAnnualRevenue ?? 0) - totalProjectedRevenue
 
-    // Actual machine minutes per day (base capacity for comparison)
-    // This now uses the actual knitting time per garment constants
-    const actualE72StollMinutesDaily = (actualE72StollCapacity ?? 0) * E72_STOLL_KNITTING_TIME_PER_GARMENT
-    const actualE35StollMinutesDaily = (actualE35StollCapacity ?? 0) * E35_STOLL_KNITTING_TIME_PER_GARMENT
-    const actualE18SwgMinutesDaily = (actualE18SwgCapacity ?? 0) * E18_SWG_KNITTING_TIME_PER_GARMENT
-    const totalActualMachineMinutesDaily =
-      actualE72StollMinutesDaily + actualE35StollMinutesDaily + actualE18SwgMinutesDaily
-
     // Check for over-capacity in "production-and-development" mix (units based)
     const e72StollCombinedUnits = (devPayloadE72StollUnits ?? 0) + (prodPayloadE72StollUnits ?? 0)
     const e35StollCombinedUnits = (devPayloadE35StollUnits ?? 0) + (prodPayloadE35StollUnits ?? 0)
     const e18SwgCombinedUnits = (devPayloadE18SwgUnits ?? 0) + (prodPayloadE18SwgUnits ?? 0)
 
-    const e72StollOverCapacity = e72StollCombinedUnits > (actualE72StollCapacity ?? 0)
-    const e35StollOverCapacity = e35StollCombinedUnits > (actualE35StollCapacity ?? 0)
-    const e18SwgOverCapacity = e18SwgCombinedUnits > (actualE18SwgCapacity ?? 0)
+    const e72StollOverCapacity = e72StollCombinedUnits > derivedE72StollActualCapacity
+    const e35StollOverCapacity = e35StollCombinedUnits > derivedE35StollActualCapacity
+    const e18SwgOverCapacity = e18SwgCombinedUnits > derivedE18SwgActualCapacity
 
     return {
       totalAvailableLaborHoursPerWeek,
@@ -363,16 +351,12 @@ export function CapacityPlanningTool() {
       isTargetAchievable,
       revenueGap,
       hoursToReachTargetRevenue,
-      totalActualMachineMinutesDaily, // Still useful for overall machine time context
       totalDevUnitsDaily,
       totalProdUnitsDaily,
       totalWeeklyProductionUnits,
       totalMonthlyProductionUnits,
       totalAnnualProductionUnits,
       currentLaborRatePerHour,
-      actualE72StollMinutesDaily,
-      actualE35StollMinutesDaily,
-      actualE18SwgMinutesDaily,
       e72StollOverCapacity,
       e35StollOverCapacity,
       e18SwgOverCapacity,
@@ -395,12 +379,12 @@ export function CapacityPlanningTool() {
     swatchKnittingMin,
     sampleKnittingMin,
     gradingKnittingMin,
-    numE72StollMachines, // Now using numE72StollMachines
-    numE35StollMachines, // Now using numE35StollMachines
-    numE18SwgMachines, // Now using numE18SwgMachines
-    actualE72StollCapacity,
-    actualE35StollCapacity,
-    actualE18SwgCapacity,
+    numE72StollMachines,
+    numE35StollMachines,
+    numE18SwgMachines,
+    e72StollCapacityPerMachine, // New dependency
+    e35StollCapacityPerMachine, // New dependency
+    e18SwgCapacityPerMachine, // New dependency
     developmentMix,
     devPayloadE72StollUnits,
     devPayloadE35StollUnits,
@@ -411,6 +395,9 @@ export function CapacityPlanningTool() {
     swatchPrice,
     samplePrice,
     gradingPrice,
+    derivedE72StollActualCapacity, // Derived dependency
+    derivedE35StollActualCapacity, // Derived dependency
+    derivedE18SwgActualCapacity, // Derived dependency
   ])
 
   const isProductionOnly = developmentMix === "production-only"
@@ -697,38 +684,38 @@ export function CapacityPlanningTool() {
 
               <Separator />
 
-              <h4 className="font-medium text-gray-700">Actual Machine Capacity (Units per Day)</h4>
+              <h4 className="font-medium text-gray-700">Capacity per Machine (Units per Day)</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="actual-e72-stoll">E7.2 STOLL</Label>
+                  <Label htmlFor="e72-stoll-capacity-per-machine">E7.2 STOLL</Label>
                   <Input
-                    id="actual-e72-stoll"
+                    id="e72-stoll-capacity-per-machine"
                     type="number"
-                    value={actualE72StollCapacity ?? ""}
+                    value={e72StollCapacityPerMachine ?? ""}
                     onChange={(e) =>
-                      setActualE72StollCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                      setE72StollCapacityPerMachine(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="actual-e35-stoll">E3.5,2 STOLL</Label>
+                  <Label htmlFor="e35-stoll-capacity-per-machine">E3.5,2 STOLL</Label>
                   <Input
-                    id="actual-e35-stoll"
+                    id="e35-stoll-capacity-per-machine"
                     type="number"
-                    value={actualE35StollCapacity ?? ""}
+                    value={e35StollCapacityPerMachine ?? ""}
                     onChange={(e) =>
-                      setActualE35StollCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                      setE35StollCapacityPerMachine(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="actual-e18-swg">E18 SWG</Label>
+                  <Label htmlFor="e18-swg-capacity-per-machine">E18 SWG</Label>
                   <Input
-                    id="actual-e18-swg"
+                    id="e18-swg-capacity-per-machine"
                     type="number"
-                    value={actualE18SwgCapacity ?? ""}
+                    value={e18SwgCapacityPerMachine ?? ""}
                     onChange={(e) =>
-                      setActualE18SwgCapacity(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                      setE18SwgCapacityPerMachine(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                     }
                   />
                 </div>
@@ -841,15 +828,6 @@ export function CapacityPlanningTool() {
                       %
                     </TableCell>
                   </TableRow>
-                  {/* Remove the TableRow that displays "Knitting (Dev)".
-                  It was previously:
-                  <TableRow>
-                    <TableCell className="pl-8">Knitting (Dev)</TableCell>
-                    <TableCell className="text-right">
-                      {((calculations.devKnittingMinutesDailyPayload / 60) * 5).toFixed(1)}
-                    </TableCell>
-                    <TableCell className="text-right"></TableCell>
-                  </TableRow> */}
                   <TableRow className="font-bold bg-gray-50">
                     <TableCell>Remaining for Production</TableCell>
                     <TableCell className="text-right">
@@ -881,25 +859,54 @@ export function CapacityPlanningTool() {
                     <TableRow>
                       <TableHead>Machine Type</TableHead>
                       <TableHead className="text-right">Units/Day</TableHead>
+                      <TableHead className="text-right">Units/Week</TableHead>
+                      <TableHead className="text-right">Units/Year</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     <TableRow>
                       <TableCell>E7.2 STOLL</TableCell>
-                      <TableCell className="text-right">{actualE72StollCapacity ?? 0}</TableCell>
+                      <TableCell className="text-right">{derivedE72StollActualCapacity}</TableCell>
+                      <TableCell className="text-right">{(derivedE72StollActualCapacity * 5).toFixed(0)}</TableCell>
+                      <TableCell className="text-right">
+                        {(derivedE72StollActualCapacity * 5 * 52).toFixed(0)}
+                      </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>E3.5,2 STOLL</TableCell>
-                      <TableCell className="text-right">{actualE35StollCapacity ?? 0}</TableCell>
+                      <TableCell className="text-right">{derivedE35StollActualCapacity}</TableCell>
+                      <TableCell className="text-right">{(derivedE35StollActualCapacity * 5).toFixed(0)}</TableCell>
+                      <TableCell className="text-right">
+                        {(derivedE35StollActualCapacity * 5 * 52).toFixed(0)}
+                      </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>E18 SWG</TableCell>
-                      <TableCell className="text-right">{actualE18SwgCapacity ?? 0}</TableCell>
+                      <TableCell className="text-right">{derivedE18SwgActualCapacity}</TableCell>
+                      <TableCell className="text-right">{(derivedE18SwgActualCapacity * 5).toFixed(0)}</TableCell>
+                      <TableCell className="text-right">{(derivedE18SwgActualCapacity * 5 * 52).toFixed(0)}</TableCell>
                     </TableRow>
                     <TableRow className="font-bold bg-gray-50">
                       <TableCell>Total Actual</TableCell>
                       <TableCell className="text-right">
-                        {(actualE72StollCapacity ?? 0) + (actualE35StollCapacity ?? 0) + (actualE18SwgCapacity ?? 0)}
+                        {derivedE72StollActualCapacity + derivedE35StollActualCapacity + derivedE18SwgActualCapacity}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(
+                          (derivedE72StollActualCapacity +
+                            derivedE35StollActualCapacity +
+                            derivedE18SwgActualCapacity) *
+                          5
+                        ).toFixed(0)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(
+                          (derivedE72StollActualCapacity +
+                            derivedE35StollActualCapacity +
+                            derivedE18SwgActualCapacity) *
+                          5 *
+                          52
+                        ).toFixed(0)}
                       </TableCell>
                     </TableRow>
                   </TableBody>
@@ -936,7 +943,7 @@ export function CapacityPlanningTool() {
                       />
                     </TableCell>
                     <TableCell className="text-right">{((devPayloadE72StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((devPayloadE72StollUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((devPayloadE72StollUnits ?? 0) * 5 * 52).toFixed(0)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>E3.5,2 STOLL</TableCell>
@@ -955,7 +962,7 @@ export function CapacityPlanningTool() {
                       />
                     </TableCell>
                     <TableCell className="text-right">{((devPayloadE35StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((devPayloadE35StollUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((devPayloadE35StollUnits ?? 0) * 5 * 52).toFixed(0)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>E18 SWG</TableCell>
@@ -974,16 +981,43 @@ export function CapacityPlanningTool() {
                       />
                     </TableCell>
                     <TableCell className="text-right">{((devPayloadE18SwgUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((devPayloadE18SwgUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((devPayloadE18SwgUnits ?? 0) * 5 * 52).toFixed(0)}</TableCell>
                   </TableRow>
                   <TableRow className="font-bold bg-gray-50">
                     <TableCell>Total</TableCell>
                     <TableCell className="text-right">{calculations.totalDevUnitsDaily.toFixed(1)}</TableCell>
                     <TableCell className="text-right">{(calculations.totalDevUnitsDaily * 5).toFixed(1)}</TableCell>
-                    <TableCell className="text-right">{(calculations.totalDevUnitsDaily * 365).toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.totalDevUnitsDaily * 5 * 52).toFixed(1)}
+                    </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
+              {isProdAndDev && (
+                <div className="mt-4 space-y-2">
+                  {calculations.e72StollOverCapacity && (
+                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                      Warning: E7.2 STOLL combined payload (
+                      {(calculations.devPayloadE72StollUnits ?? 0) + (calculations.prodPayloadE72StollUnits ?? 0)}{" "}
+                      units) exceeds Actual Capacity ({derivedE72StollActualCapacity} units).
+                    </div>
+                  )}
+                  {calculations.e35StollOverCapacity && (
+                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                      Warning: E3.5,2 STOLL combined payload (
+                      {(calculations.devPayloadE35StollUnits ?? 0) + (calculations.prodPayloadE35StollUnits ?? 0)}{" "}
+                      units) exceeds Actual Capacity ({derivedE35StollActualCapacity} units).
+                    </div>
+                  )}
+                  {calculations.e18SwgOverCapacity && (
+                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                      Warning: E18 SWG combined payload (
+                      {(calculations.devPayloadE18SwgUnits ?? 0) + (calculations.prodPayloadE18SwgUnits ?? 0)} units)
+                      exceeds Actual Capacity ({derivedE18SwgActualCapacity} units).
+                    </div>
+                  )}
+                </div>
+              )}
 
               <Separator className="my-4" />
 
@@ -1017,7 +1051,9 @@ export function CapacityPlanningTool() {
                       />
                     </TableCell>
                     <TableCell className="text-right">{((prodPayloadE72StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((prodPayloadE72StollUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">
+                      {((prodPayloadE72StollUnits ?? 0) * 5 * 52).toFixed(0)}
+                    </TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>E3.5,2 STOLL</TableCell>
@@ -1036,7 +1072,9 @@ export function CapacityPlanningTool() {
                       />
                     </TableCell>
                     <TableCell className="text-right">{((prodPayloadE35StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((prodPayloadE35StollUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">
+                      {((prodPayloadE35StollUnits ?? 0) * 5 * 52).toFixed(0)}
+                    </TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>E18 SWG</TableCell>
@@ -1055,7 +1093,7 @@ export function CapacityPlanningTool() {
                       />
                     </TableCell>
                     <TableCell className="text-right">{((prodPayloadE18SwgUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((prodPayloadE18SwgUnits ?? 0) * 365).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{((prodPayloadE18SwgUnits ?? 0) * 5 * 52).toFixed(0)}</TableCell>
                   </TableRow>
                   <TableRow className="font-bold bg-gray-50">
                     <TableCell>Total</TableCell>
@@ -1067,31 +1105,6 @@ export function CapacityPlanningTool() {
                   </TableRow>
                 </TableBody>
               </Table>
-              {isProdAndDev && (
-                <div className="mt-4 space-y-2">
-                  {calculations.e72StollOverCapacity && (
-                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                      Warning: E7.2 STOLL combined payload (
-                      {(calculations.devPayloadE72StollUnits ?? 0) + (calculations.prodPayloadE72StollUnits ?? 0)}{" "}
-                      units) exceeds actual capacity ({actualE72StollCapacity ?? 0} units).
-                    </div>
-                  )}
-                  {calculations.e35StollOverCapacity && (
-                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                      Warning: E3.5,2 STOLL combined payload (
-                      {(calculations.devPayloadE35StollUnits ?? 0) + (calculations.prodPayloadE35StollUnits ?? 0)}{" "}
-                      units) exceeds actual capacity ({actualE35StollCapacity ?? 0} units).
-                    </div>
-                  )}
-                  {calculations.e18SwgOverCapacity && (
-                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                      Warning: E18 SWG combined payload (
-                      {(calculations.devPayloadE18SwgUnits ?? 0) + (calculations.prodPayloadE18SwgUnits ?? 0)} units)
-                      exceeds actual capacity ({actualE18SwgCapacity ?? 0} units).
-                    </div>
-                  )}
-                </div>
-              )}
             </CardContent>
           </Card>
 
