@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 export function CapacityPlanningTool() {
   // User Inputs for Scenario Parameters
-  const [targetAnnualRevenue, setTargetAnnualRevenue] = useState<number | null>(100000000)
+  const [targetAnnualRevenue, setTargetAnnualRevenue] = useState<number | null>(1000000)
   const [numStaff, setNumStaff] = useState<number | null>(5)
   const [desiredWeeklySwatches, setDesiredWeeklySwatches] = useState<number | null>(20)
   const [desiredWeeklySamples, setDesiredWeeklySamples] = useState<number | null>(4)
@@ -21,9 +22,9 @@ export function CapacityPlanningTool() {
   // Adjustable Parameters
   const [laborRatePerHour, setLaborRatePerHour] = useState<number | null>(30)
   const [workHoursPerWeekPerPerson, setWorkHoursPerWeekPerPerson] = useState<number | null>(40)
-  const [swatchPrice, setSwatchPrice] = useState<number | null>(100)
+  const [swatchPrice, setSwatchPrice] = useState<number | null>(250)
   const [samplePrice, setSamplePrice] = useState<number | null>(2000)
-  const [gradingPrice, setGradingPrice] = useState<number | null>(500)
+  const [gradingPrice, setGradingPrice] = useState<number | null>(2500)
 
   // Service Time Details (in minutes) - Used for labor hour calculations, only knitting
   const [swatchKnittingMin, setSwatchKnittingMin] = useState<number | null>(25)
@@ -35,130 +36,61 @@ export function CapacityPlanningTool() {
   const [numE35StollMachines, setNumE35StollMachines] = useState<number | null>(1)
   const [numE18SwgMachines, setNumE18SwgMachines] = useState<number | null>(1)
 
-  // NEW: Capacity per Machine (Units per Day)
+  // Capacity per Machine (Units per Day) - These are inputs for the *potential* daily units
   const [e72StollCapacityPerMachine, setE72StollCapacityPerMachine] = useState<number | null>(8)
   const [e35StollCapacityPerMachine, setE35StollCapacityPerMachine] = useState<number | null>(10)
   const [e18SwgCapacityPerMachine, setE18SwgCapacityPerMachine] = useState<number | null>(16)
 
-  // Internal constants for actual knitting times per garment (from spreadsheet)
-  const E72_STOLL_KNITTING_TIME_PER_GARMENT = 3
-  const E35_STOLL_KNITTING_TIME_PER_GARMENT = 1
-  const E18_SWG_KNITTING_TIME_PER_GARMENT = 1
+  // NEW: Capacity per Machine (Hours per Day)
+  const [e72StollHoursPerDay, setE72StollHoursPerDay] = useState<number | null>(8)
+  const [e35StollHoursPerDay, setE35StollHoursPerDay] = useState<number | null>(8)
+  const [e18SwgHoursPerDay, setE18SwgHoursPerDay] = useState<number | null>(8)
+
+  // NEW: Internal constants for actual knitting times per PRODUCTION garment (from user input)
+  const PROD_KNITTING_TIME_E72 = 60
+  const PROD_KNITTING_TIME_E35 = 50
+  const PROD_KNITTING_TIME_E18 = 30
 
   // Derived Actual Machine Capacity (Units per Day)
   const derivedE72StollActualCapacity = (numE72StollMachines ?? 0) * (e72StollCapacityPerMachine ?? 0)
   const derivedE35StollActualCapacity = (numE35StollMachines ?? 0) * (e35StollCapacityPerMachine ?? 0)
   const derivedE18SwgActualCapacity = (numE18SwgMachines ?? 0) * (e18SwgCapacityPerMachine ?? 0)
 
-  // Existing states for Development Payload (Units per Day) per machine
-  const [devPayloadE72StollUnits, setDevPayloadE72StollUnits] = useState<number | null>(0)
-  const [devPayloadE35StollUnits, setDevPayloadE35StollUnits] = useState<number | null>(0)
-  const [devPayloadE18SwgUnits, setDevPayloadE18SwgUnits] = useState<number | null>(0)
-
-  // Existing states for Production Payload (Units per Day) per machine
-  const [prodPayloadE72StollUnits, setProdPayloadE72StollUnits] = useState<number | null>(derivedE72StollActualCapacity)
-  const [prodPayloadE35StollUnits, setProdPayloadE35StollUnits] = useState<number | null>(derivedE35StollActualCapacity)
-  const [prodPayloadE18SwgUnits, setProdPayloadE18SwgUnits] = useState<number | null>(derivedE18SwgActualCapacity)
-
   // Development Mix
   const [developmentMix, setDevelopmentMix] = useState<string | null>("production-only")
 
-  // Helper function to handle interdependent changes for development units
-  const handleDevUnitsChange = useCallback(
-    (machine: "e72" | "e35" | "e18", value: number | null) => {
-      const newDevUnits = value ?? 0
-      let actualCap = 0
-      let setDev: (val: number | null) => void
-      let setProd: (val: number | null) => void
+  // Fixed total machine minutes per week as per user's statement
+  const TOTAL_FIXED_MACHINE_MINUTES_WEEKLY = 12000
 
-      if (machine === "e72") {
-        actualCap = derivedE72StollActualCapacity
-        setDev = setDevPayloadE72StollUnits
-        setProd = setProdPayloadE72StollUnits
-      } else if (machine === "e35") {
-        actualCap = derivedE35StollActualCapacity
-        setDev = setDevPayloadE35StollUnits
-        setProd = setProdPayloadE35StollUnits
-      } else {
-        actualCap = derivedE18SwgActualCapacity
-        setDev = setDevPayloadE18SwgUnits
-        setProd = setProdPayloadE18SwgUnits
-      }
-
-      const cappedDevUnits = Math.min(newDevUnits, actualCap)
-      const newProdUnits = Math.max(0, actualCap - cappedDevUnits)
-
-      setDev(cappedDevUnits)
-      setProd(newProdUnits)
-    },
-    [derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity],
-  )
-
-  // Helper function to handle interdependent changes for production units
-  const handleProdUnitsChange = useCallback(
-    (machine: "e72" | "e35" | "e18", value: number | null) => {
-      const newProdUnits = value ?? 0
-      let actualCap = 0
-      let setDev: (val: number | null) => void
-      let setProd: (val: number | null) => void
-
-      if (machine === "e72") {
-        actualCap = derivedE72StollActualCapacity
-        setDev = setDevPayloadE72StollUnits
-        setProd = setProdPayloadE72StollUnits
-      } else if (machine === "e35") {
-        actualCap = derivedE35StollActualCapacity
-        setDev = setDevPayloadE35StollUnits
-        setProd = setProdPayloadE35StollUnits
-      } else {
-        actualCap = derivedE18SwgActualCapacity
-        setDev = setDevPayloadE18SwgUnits
-        setProd = setProdPayloadE18SwgUnits
-      }
-
-      const cappedProdUnits = Math.min(newProdUnits, actualCap)
-      const newDevUnits = Math.max(0, actualCap - cappedProdUnits)
-
-      setProd(cappedProdUnits)
-      setDev(newDevUnits)
-    },
-    [derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity],
-  )
-
-  // Effect to update payload states when developmentMix changes or derived capacities change
+  // Effect to update desired development units when developmentMix changes
   useEffect(() => {
     if (developmentMix === "production-only") {
-      setDevPayloadE72StollUnits(0)
-      setDevPayloadE35StollUnits(0)
-      setDevPayloadE18SwgUnits(0)
-      setProdPayloadE72StollUnits(derivedE72StollActualCapacity)
-      setProdPayloadE35StollUnits(derivedE35StollActualCapacity)
-      setProdPayloadE18SwgUnits(derivedE18SwgActualCapacity)
+      setDesiredWeeklySwatches(0)
+      setDesiredWeeklySamples(0)
+      setDesiredWeeklyGrading(0)
     } else if (developmentMix === "development-only") {
-      setProdPayloadE72StollUnits(0)
-      setProdPayloadE35StollUnits(0)
-      setProdPayloadE18SwgUnits(0)
-      setDevPayloadE72StollUnits(derivedE72StollActualCapacity)
-      setDevPayloadE35StollUnits(derivedE35StollActualCapacity)
-      setDevPayloadE18SwgUnits(derivedE18SwgActualCapacity)
-    } else {
-      // "production-and-development" - no automatic reset, user can adjust
+      // Set desired development items to consume the full 12000 minutes proportionally
+      // Based on user's "best dev case" example: 80 swatches (2000 min), 19 samples (1900 min), 18 grading (8100 min) = 12000 min
+      setDesiredWeeklySwatches(80)
+      setDesiredWeeklySamples(19)
+      setDesiredWeeklyGrading(18)
     }
-  }, [developmentMix, derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity])
+    // For "production-and-development", user inputs are kept as is.
+  }, [developmentMix])
 
   const handleResetToDefaults = useCallback(() => {
-    setTargetAnnualRevenue(100000)
+    setTargetAnnualRevenue(1000000)
     setNumStaff(5)
-    setDesiredWeeklySwatches(20)
-    setDesiredWeeklySamples(4)
-    setDesiredWeeklyGrading(2)
+    setDesiredWeeklySwatches(0) // Will be updated by useEffect based on developmentMix
+    setDesiredWeeklySamples(0) // Will be updated by useEffect based on developmentMix
+    setDesiredWeeklyGrading(0) // Will be updated by useEffect based on developmentMix
     setAvgGarmentPrice(150)
 
     setLaborRatePerHour(30)
     setWorkHoursPerWeekPerPerson(40)
-    setSwatchPrice(100)
+    setSwatchPrice(250)
     setSamplePrice(2000)
-    setGradingPrice(500)
+    setGradingPrice(2500)
 
     setSwatchKnittingMin(25)
     setSampleKnittingMin(100)
@@ -168,73 +100,67 @@ export function CapacityPlanningTool() {
     setNumE35StollMachines(1)
     setNumE18SwgMachines(1)
 
-    // Reset Capacity per Machine to defaults
     setE72StollCapacityPerMachine(8)
     setE35StollCapacityPerMachine(10)
     setE18SwgCapacityPerMachine(16)
 
-    // Reset development mix and corresponding payloads based on new derived capacities
-    setDevelopmentMix("production-only")
-    setDevPayloadE72StollUnits(0)
-    setDevPayloadE35StollUnits(0)
-    setDevPayloadE18SwgUnits(0)
-    setProdPayloadE72StollUnits(derivedE72StollActualCapacity)
-    setProdPayloadE35StollUnits(derivedE35StollActualCapacity)
-    setProdPayloadE18SwgUnits(derivedE18SwgActualCapacity)
-  }, [derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity])
+    setE72StollHoursPerDay(8) // Reset new hours per day
+    setE35StollHoursPerDay(8)
+    setE18SwgHoursPerDay(8)
 
-  const applyScenarioDefaults = useCallback(
-    (scenario: "production-only" | "dev-worst-case" | "dev-best-case") => {
-      // Set base machine numbers and capacities first, then reset to defaults
-      // to ensure derived capacities are correct before setting payloads
-      setNumE72StollMachines(3)
-      setNumE35StollMachines(1)
-      setNumE18SwgMachines(1)
-      setE72StollCapacityPerMachine(8)
-      setE35StollCapacityPerMachine(10)
-      setE18SwgCapacityPerMachine(16)
+    setDevelopmentMix("production-only") // This will trigger the useEffect to reset desiredWeeklyDev units
+  }, [])
 
-      // Now call handleResetToDefaults to reset other parameters and payloads
-      // This will use the newly set machine capacities to derive actual capacities
-      handleResetToDefaults()
+  const applyScenarioDefaults = useCallback((scenario: "production-only" | "dev-worst-case" | "dev-best-case") => {
+    // Set base machine numbers and capacities first
+    setNumE72StollMachines(3)
+    setNumE35StollMachines(1)
+    setNumE18SwgMachines(1)
+    setE72StollCapacityPerMachine(8)
+    setE35StollCapacityPerMachine(10)
+    setE18SwgCapacityPerMachine(16)
+    setE72StollHoursPerDay(8) // Set new hours per day
+    setE35StollHoursPerDay(8)
+    setE18SwgHoursPerDay(8)
 
-      if (scenario === "production-only") {
-        setDevelopmentMix("production-only")
-        setDesiredWeeklySwatches(0)
-        setDesiredWeeklySamples(0)
-        setDesiredWeeklyGrading(0)
-        setSwatchPrice(100) // Default price
-        setSamplePrice(2000) // Default price
-        setGradingPrice(500) // Default price
-        // Payloads are set by useEffect based on developmentMix
-      } else if (scenario === "dev-worst-case") {
-        setDevelopmentMix("production-and-development")
-        setDesiredWeeklySwatches(14)
-        setDesiredWeeklySamples(6)
-        setDesiredWeeklyGrading(4)
-        setSwatchPrice(250) // Spreadsheet price
-        setSamplePrice(2000) // Spreadsheet price
-        setGradingPrice(2500) // Spreadsheet price
-        // Manually set payloads for this specific scenario
-        setProdPayloadE72StollUnits(16)
-        setProdPayloadE35StollUnits(2)
-        setProdPayloadE18SwgUnits(3)
-        setDevPayloadE72StollUnits(derivedE72StollActualCapacity - 16) // Derived from 24-16
-        setDevPayloadE35StollUnits(derivedE35StollActualCapacity - 2) // Derived from 10-2
-        setDevPayloadE18SwgUnits(derivedE18SwgActualCapacity - 3) // Derived from 16-3
-      } else if (scenario === "dev-best-case") {
-        setDevelopmentMix("development-only")
-        setDesiredWeeklySwatches(80)
-        setDesiredWeeklySamples(19)
-        setDesiredWeeklyGrading(18)
-        setSwatchPrice(250) // Spreadsheet price
-        setSamplePrice(2000) // Spreadsheet price
-        setGradingPrice(2500) // Spreadsheet price
-        // Payloads are set by useEffect based on developmentMix
-      }
-    },
-    [handleResetToDefaults, derivedE72StollActualCapacity, derivedE35StollActualCapacity, derivedE18SwgActualCapacity],
-  )
+    // Reset other parameters to defaults
+    setTargetAnnualRevenue(1000000)
+    setNumStaff(5)
+    setLaborRatePerHour(30)
+    setWorkHoursPerWeekPerPerson(40)
+    setSwatchKnittingMin(25)
+    setSampleKnittingMin(100)
+    setGradingKnittingMin(450)
+
+    if (scenario === "production-only") {
+      setDevelopmentMix("production-only")
+      setDesiredWeeklySwatches(0)
+      setDesiredWeeklySamples(0)
+      setDesiredWeeklyGrading(0)
+      setSwatchPrice(100)
+      setSamplePrice(2000)
+      setGradingPrice(500)
+      setAvgGarmentPrice(150)
+    } else if (scenario === "dev-worst-case") {
+      setDevelopmentMix("production-and-development")
+      setDesiredWeeklySwatches(14)
+      setDesiredWeeklySamples(6)
+      setDesiredWeeklyGrading(4)
+      setSwatchPrice(250)
+      setSamplePrice(2000)
+      setGradingPrice(2500)
+      setAvgGarmentPrice(150) // Production is still active
+    } else if (scenario === "dev-best-case") {
+      setDevelopmentMix("development-only")
+      setDesiredWeeklySwatches(80)
+      setDesiredWeeklySamples(19)
+      setDesiredWeeklyGrading(18)
+      setSwatchPrice(250)
+      setSamplePrice(2000)
+      setGradingPrice(2500)
+      setAvgGarmentPrice(0) // No production revenue in dev-only
+    }
+  }, [])
 
   const calculations = useMemo(() => {
     const currentNumStaff = numStaff ?? 5
@@ -256,8 +182,7 @@ export function CapacityPlanningTool() {
       (desiredWeeklySamples ?? 0) * knittingHoursPerSampleCalc +
       (desiredWeeklyGrading ?? 0) * knittingHoursPerGradingCalc
 
-    // Total development hours weekly now only includes knitting
-    const totalDevelopmentHoursWeekly = totalDevelopmentKnittingHoursWeekly
+    const totalDevelopmentMinutesWeekly = totalDevelopmentKnittingHoursWeekly * 60
 
     // Service pricing (using state variables)
     const currentSwatchPrice = swatchPrice ?? 0
@@ -276,34 +201,67 @@ export function CapacityPlanningTool() {
     const developmentRevenueAnnual = developmentRevenueWeekly * 52
 
     // Remaining labor hours for production
-    const remainingLaborHoursForProductionWeekly = totalAvailableLaborHoursPerWeek - totalDevelopmentHoursWeekly
+    const remainingLaborHoursForProductionWeekly = totalAvailableLaborHoursPerWeek - totalDevelopmentKnittingHoursWeekly
     const remainingLaborHoursForProductionAnnual = remainingLaborHoursForProductionWeekly * 52
 
     // --- Machine Capacity Calculations based on Development Mix and User Inputs ---
-    const totalDevUnitsDaily =
-      (devPayloadE72StollUnits ?? 0) + (devPayloadE35StollUnits ?? 0) + (devPayloadE18SwgUnits ?? 0)
-    const totalProdUnitsDaily =
-      (prodPayloadE72StollUnits ?? 0) + (prodPayloadE35StollUnits ?? 0) + (prodPayloadE18SwgUnits ?? 0)
 
-    const totalWeeklyProductionUnits = totalProdUnitsDaily * 5
-    const totalMonthlyProductionUnits = totalProdUnitsDaily * (365 / 12)
-    const totalAnnualProductionUnits = totalProdUnitsDaily * 5 * 52
+    // Derived total machine minutes from user's machine configuration inputs
+    const derivedTotalMachineMinutesFromInputsWeekly =
+      ((numE72StollMachines ?? 0) * (e72StollHoursPerDay ?? 0) * 60 +
+        (numE35StollMachines ?? 0) * (e35StollHoursPerDay ?? 0) * 60 +
+        (numE18SwgMachines ?? 0) * (e18SwgHoursPerDay ?? 0) * 60) *
+      5 // Multiply by 5 for weekly
 
-    // Calculate production units achievable with remaining labor hours
-    const avgKnittingTimePerGarment =
-      (E72_STOLL_KNITTING_TIME_PER_GARMENT + E35_STOLL_KNITTING_TIME_PER_GARMENT + E18_SWG_KNITTING_TIME_PER_GARMENT) /
-      3
-    const avgProductionHoursPerGarment = avgKnittingTimePerGarment / 60 // Convert minutes to hours
+    // Required machine minutes for desired development items
+    const requiredDevMachineMinutesWeekly =
+      (desiredWeeklySwatches ?? 0) * (swatchKnittingMin ?? 0) +
+      (desiredWeeklySamples ?? 0) * (sampleKnittingMin ?? 0) +
+      (desiredWeeklyGrading ?? 0) * (gradingKnittingMin ?? 0)
 
-    let achievableProductionUnitsAnnualByLabor = 0
-    if (avgProductionHoursPerGarment > 0) {
-      achievableProductionUnitsAnnualByLabor = remainingLaborHoursForProductionAnnual / avgProductionHoursPerGarment
-    }
+    // Remaining machine minutes for production, based on the FIXED total capacity
+    const remainingProdMachineMinutesWeekly = Math.max(
+      0,
+      TOTAL_FIXED_MACHINE_MINUTES_WEEKLY - requiredDevMachineMinutesWeekly,
+    )
 
-    // Final achievable production units is the minimum of machine capacity (from inputs) and labor capacity
-    const achievableProductionUnitsAnnual = Math.min(totalAnnualProductionUnits, achievableProductionUnitsAnnualByLabor)
+    // Check for development over-allocation against the FIXED total capacity
+    const isDevOverCapacity = requiredDevMachineMinutesWeekly > TOTAL_FIXED_MACHINE_MINUTES_WEEKLY
 
-    let productionRevenueAnnual = achievableProductionUnitsAnnual * currentAvgGarmentPrice
+    // Calculate potential production minutes for each machine type if running only production
+    const e72TotalProdMinutesPotentialWeekly =
+      (numE72StollMachines ?? 0) * (e72StollCapacityPerMachine ?? 0) * PROD_KNITTING_TIME_E72 * 5
+    const e35TotalProdMinutesPotentialWeekly =
+      (numE35StollMachines ?? 0) * (e35StollCapacityPerMachine ?? 0) * PROD_KNITTING_TIME_E35 * 5
+    const e18TotalProdMinutesPotentialWeekly =
+      (numE18SwgMachines ?? 0) * (e18SwgCapacityPerMachine ?? 0) * PROD_KNITTING_TIME_E18 * 5
+
+    const totalPotentialProdMinutesWeekly =
+      e72TotalProdMinutesPotentialWeekly + e35TotalProdMinutesPotentialWeekly + e18TotalProdMinutesPotentialWeekly
+
+    // Scale down production minutes if remaining time is less than potential
+    const scalingFactor =
+      totalPotentialProdMinutesWeekly > 0 ? remainingProdMachineMinutesWeekly / totalPotentialProdMinutesWeekly : 0
+
+    const achievableE72ProdMinutesWeekly = e72TotalProdMinutesPotentialWeekly * scalingFactor
+    const achievableE35ProdMinutesWeekly = e35TotalProdMinutesPotentialWeekly * scalingFactor
+    const achievableE18ProdMinutesWeekly = e18TotalProdMinutesPotentialWeekly * scalingFactor
+
+    // Convert achievable production minutes back to units per day for display
+    const prodPayloadE72StollUnitsDisplay =
+      PROD_KNITTING_TIME_E72 > 0 ? achievableE72ProdMinutesWeekly / PROD_KNITTING_TIME_E72 / 5 : 0
+    const prodPayloadE35StollUnitsDisplay =
+      PROD_KNITTING_TIME_E35 > 0 ? achievableE35ProdMinutesWeekly / PROD_KNITTING_TIME_E35 / 5 : 0
+    const prodPayloadE18SwgUnitsDisplay =
+      PROD_KNITTING_TIME_E18 > 0 ? achievableE18ProdMinutesWeekly / PROD_KNITTING_TIME_E18 / 5 : 0
+
+    const totalDailyProdUnits =
+      prodPayloadE72StollUnitsDisplay + prodPayloadE35StollUnitsDisplay + prodPayloadE18SwgUnitsDisplay
+
+    const totalWeeklyProductionUnits = totalDailyProdUnits * 5
+    const totalAnnualProductionUnits = totalDailyProdUnits * 5 * 52
+
+    let productionRevenueAnnual = totalAnnualProductionUnits * currentAvgGarmentPrice
 
     if (developmentMix === "development-only") {
       productionRevenueAnnual = 0
@@ -314,58 +272,62 @@ export function CapacityPlanningTool() {
     let hoursToReachTargetRevenue = 0
     if (targetAnnualRevenue !== null && targetAnnualRevenue > developmentRevenueAnnual) {
       const remainingRevenueTarget = targetAnnualRevenue - developmentRevenueAnnual
-      if (currentAvgGarmentPrice > 0 && avgProductionHoursPerGarment > 0) {
+      if (currentAvgGarmentPrice > 0 && totalDailyProdUnits > 0) {
+        // Estimate average production time per garment based on current distribution
+        const totalProdMinutesUsedWeekly =
+          achievableE72ProdMinutesWeekly + achievableE35ProdMinutesWeekly + achievableE18ProdMinutesWeekly
+        const avgProdTimePerGarment =
+          totalWeeklyProductionUnits > 0 ? totalProdMinutesUsedWeekly / totalWeeklyProductionUnits : 0
+
         const requiredProductionUnits = remainingRevenueTarget / currentAvgGarmentPrice
         hoursToReachTargetRevenue =
-          requiredProductionUnits * avgProductionHoursPerGarment + totalDevelopmentHoursWeekly * 52
+          requiredProductionUnits * (avgProdTimePerGarment / 60) + totalDevelopmentKnittingHoursWeekly * 52
       }
     } else if (targetAnnualRevenue !== null && targetAnnualRevenue <= developmentRevenueAnnual) {
-      hoursToReachTargetRevenue = totalDevelopmentHoursWeekly * 52 // Only development needed
+      hoursToReachTargetRevenue = totalDevelopmentKnittingHoursWeekly * 52 // Only development needed
     }
 
     // Determine if target revenue is achievable
     const isTargetAchievable = totalProjectedRevenue >= (targetAnnualRevenue ?? 0)
     const revenueGap = (targetAnnualRevenue ?? 0) - totalProjectedRevenue
 
-    // Check for over-capacity in "production-and-development" mix (units based)
-    const e72StollCombinedUnits = (devPayloadE72StollUnits ?? 0) + (prodPayloadE72StollUnits ?? 0)
-    const e35StollCombinedUnits = (devPayloadE35StollUnits ?? 0) + (prodPayloadE35StollUnits ?? 0)
-    const e18SwgCombinedUnits = (devPayloadE18SwgUnits ?? 0) + (prodPayloadE18SwgUnits ?? 0)
-
-    const e72StollOverCapacity = e72StollCombinedUnits > derivedE72StollActualCapacity
-    const e35StollOverCapacity = e35StollCombinedUnits > derivedE35StollActualCapacity
-    const e18SwgOverCapacity = e18SwgCombinedUnits > derivedE18SwgActualCapacity
+    // Actual Development Capacity (Weekly Max if only that item is produced)
+    const maxSwatchesIfOnlySwatches =
+      (swatchKnittingMin ?? 0) > 0 ? TOTAL_FIXED_MACHINE_MINUTES_WEEKLY / (swatchKnittingMin ?? 1) : 0
+    const maxSamplesIfOnlySamples =
+      (sampleKnittingMin ?? 0) > 0 ? TOTAL_FIXED_MACHINE_MINUTES_WEEKLY / (sampleKnittingMin ?? 1) : 0
+    const maxGradingIfOnlyGrading =
+      (gradingKnittingMin ?? 0) > 0 ? TOTAL_FIXED_MACHINE_MINUTES_WEEKLY / (gradingKnittingMin ?? 1) : 0
 
     return {
       totalAvailableLaborHoursPerWeek,
       totalAvailableLaborHoursPerYear,
-      totalDevelopmentHoursWeekly,
-      totalDevelopmentKnittingHoursWeekly,
+      totalDevelopmentHoursWeekly: totalDevelopmentKnittingHoursWeekly, // Renamed for clarity
+      totalDevelopmentMinutesWeekly, // New
       developmentRevenueWeekly,
       developmentRevenueAnnual,
       remainingLaborHoursForProductionWeekly,
       remainingLaborHoursForProductionAnnual,
-      achievableProductionUnitsAnnual: Math.floor(achievableProductionUnitsAnnual),
+      achievableProductionUnitsAnnual: Math.floor(totalAnnualProductionUnits), // Use the newly calculated total annual production units
       productionRevenueAnnual,
       totalProjectedRevenue,
       isTargetAchievable,
       revenueGap,
       hoursToReachTargetRevenue,
-      totalDevUnitsDaily,
-      totalProdUnitsDaily,
       totalWeeklyProductionUnits,
-      totalMonthlyProductionUnits,
+      totalDailyProdUnits, // Added for total time calculation
+      totalMonthlyProductionUnits: totalDailyProdUnits * (365 / 12),
       totalAnnualProductionUnits,
       currentLaborRatePerHour,
-      e72StollOverCapacity,
-      e35StollOverCapacity,
-      e18SwgOverCapacity,
-      devPayloadE72StollUnits,
-      prodPayloadE72StollUnits,
-      devPayloadE35StollUnits,
-      prodPayloadE35StollUnits,
-      devPayloadE18SwgUnits,
-      prodPayloadE18SwgUnits,
+      isDevOverCapacity, // New warning flag
+      prodPayloadE72StollUnitsDisplay,
+      prodPayloadE35StollUnitsDisplay,
+      prodPayloadE18SwgUnitsDisplay,
+      totalMachineOperatingMinutesWeekly: TOTAL_FIXED_MACHINE_MINUTES_WEEKLY, // Use the fixed total
+      derivedTotalMachineMinutesFromInputsWeekly, // New
+      maxSwatchesIfOnlySwatches, // New
+      maxSamplesIfOnlySamples, // New
+      maxGradingIfOnlyGrading, // New
     }
   }, [
     targetAnnualRevenue,
@@ -382,27 +344,40 @@ export function CapacityPlanningTool() {
     numE72StollMachines,
     numE35StollMachines,
     numE18SwgMachines,
-    e72StollCapacityPerMachine, // New dependency
-    e35StollCapacityPerMachine, // New dependency
-    e18SwgCapacityPerMachine, // New dependency
+    e72StollCapacityPerMachine,
+    e35StollCapacityPerMachine,
+    e18SwgCapacityPerMachine,
+    e72StollHoursPerDay, // New dependency
+    e35StollHoursPerDay, // New dependency
+    e18SwgHoursPerDay, // New dependency
     developmentMix,
-    devPayloadE72StollUnits,
-    devPayloadE35StollUnits,
-    devPayloadE18SwgUnits,
-    prodPayloadE72StollUnits,
-    prodPayloadE35StollUnits,
-    prodPayloadE18SwgUnits,
     swatchPrice,
     samplePrice,
     gradingPrice,
-    derivedE72StollActualCapacity, // Derived dependency
-    derivedE35StollActualCapacity, // Derived dependency
-    derivedE18SwgActualCapacity, // Derived dependency
   ])
 
   const isProductionOnly = developmentMix === "production-only"
   const isDevelopmentOnly = developmentMix === "development-only"
-  const isProdAndDev = developmentMix === "production-and-development"
+
+  // Calculate individual development item totals for the table
+  const swatchTotalMinutes = (desiredWeeklySwatches ?? 0) * (swatchKnittingMin ?? 0)
+  const swatchTotalHours = swatchTotalMinutes / 60
+  const sampleTotalMinutes = (desiredWeeklySamples ?? 0) * (sampleKnittingMin ?? 0)
+  const sampleTotalHours = sampleTotalMinutes / 60
+  const gradingTotalMinutes = (desiredWeeklyGrading ?? 0) * (gradingKnittingMin ?? 0)
+  const gradingTotalHours = gradingTotalMinutes / 60
+
+  // Calculate remaining machine time
+  const remainingMachineMinutesWeekly = TOTAL_FIXED_MACHINE_MINUTES_WEEKLY - calculations.totalDevelopmentMinutesWeekly
+  const remainingMachineHoursWeekly = remainingMachineMinutesWeekly / 60
+
+  // Calculate total daily production time for each machine type
+  const e72StollDailyTotalTime = calculations.prodPayloadE72StollUnitsDisplay * PROD_KNITTING_TIME_E72
+  const e35StollDailyTotalTime = calculations.prodPayloadE35StollUnitsDisplay * PROD_KNITTING_TIME_E35
+  const e18SwgDailyTotalTime = calculations.prodPayloadE18SwgUnitsDisplay * PROD_KNITTING_TIME_E18
+  const totalDailyProductionTime = e72StollDailyTotalTime + e35StollDailyTotalTime + e18SwgDailyTotalTime
+  const totalWeeklyProductionTime = totalDailyProductionTime * 5
+  const totalAnnualProductionTime = totalWeeklyProductionTime * 52
 
   return (
     <div className="space-y-6">
@@ -476,11 +451,11 @@ export function CapacityPlanningTool() {
                 onChange={(e) =>
                   setDesiredWeeklySwatches(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                 }
-                disabled={isProductionOnly}
+                disabled={isProductionOnly || isDevelopmentOnly}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="weekly-samples">Development Service</Label>
+              <Label htmlFor="weekly-samples">Samples</Label>
               <Input
                 id="weekly-samples"
                 type="number"
@@ -488,11 +463,11 @@ export function CapacityPlanningTool() {
                 onChange={(e) =>
                   setDesiredWeeklySamples(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                 }
-                disabled={isProductionOnly}
+                disabled={isProductionOnly || isDevelopmentOnly}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="weekly-grading">Grading Service</Label>
+              <Label htmlFor="weekly-grading">Grading</Label>
               <Input
                 id="weekly-grading"
                 type="number"
@@ -500,10 +475,17 @@ export function CapacityPlanningTool() {
                 onChange={(e) =>
                   setDesiredWeeklyGrading(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                 }
-                disabled={isProductionOnly}
+                disabled={isProductionOnly || isDevelopmentOnly}
               />
             </div>
           </div>
+          {calculations.isDevOverCapacity && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+              Warning: Desired development work ({calculations.totalDevelopmentMinutesWeekly.toFixed(0)} minutes)
+              exceeds total available machine capacity ({TOTAL_FIXED_MACHINE_MINUTES_WEEKLY} minutes). Production will
+              be impacted.
+            </div>
+          )}
 
           <Separator />
 
@@ -511,8 +493,8 @@ export function CapacityPlanningTool() {
           <h3 className="text-lg font-semibold mb-4">Load Scenarios</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button onClick={() => applyScenarioDefaults("production-only")}>Production Only</Button>
-            <Button onClick={() => applyScenarioDefaults("dev-worst-case")}>Dev Worst Case + Production </Button>
             <Button onClick={() => applyScenarioDefaults("dev-best-case")}>Development Only</Button>
+            <Button onClick={() => applyScenarioDefaults("dev-worst-case")}>Dev Worst Case + Production </Button>
           </div>
 
           <Separator />
@@ -553,56 +535,6 @@ export function CapacityPlanningTool() {
 
               <Separator />
 
-              <h4 className="font-medium text-gray-700">Service Knitting Time (Minutes per Unit)</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-4">
-                  <h5 className="font-medium">Swatch</h5>
-                  <div className="space-y-2">
-                    <Label htmlFor="swatch-knitting-min">Knitting</Label>
-                    <Input
-                      id="swatch-knitting-min"
-                      type="number"
-                      value={swatchKnittingMin ?? ""}
-                      onChange={(e) =>
-                        setSwatchKnittingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h5 className="font-medium">Development Service</h5>
-                  <div className="space-y-2">
-                    <Label htmlFor="sample-knitting-min">Knitting</Label>
-                    <Input
-                      id="sample-knitting-min"
-                      type="number"
-                      value={sampleKnittingMin ?? ""}
-                      onChange={(e) =>
-                        setSampleKnittingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h5 className="font-medium">Grading</h5>
-                  <div className="space-y-2">
-                    <Label htmlFor="grading-knitting-min">Knitting</Label>
-                    <Input
-                      id="grading-knitting-min"
-                      type="number"
-                      value={gradingKnittingMin ?? ""}
-                      onChange={(e) =>
-                        setGradingKnittingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
               <h4 className="font-medium text-gray-700">Service Pricing ($)</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -618,7 +550,7 @@ export function CapacityPlanningTool() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sample-price">Development Service Price</Label>
+                  <Label htmlFor="sample-price">Sample Price</Label>
                   <Input
                     id="sample-price"
                     type="number"
@@ -630,7 +562,7 @@ export function CapacityPlanningTool() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="grading-price">Grading Service Price</Label>
+                  <Label htmlFor="grading-price">Grading Price</Label>
                   <Input
                     id="grading-price"
                     type="number"
@@ -721,11 +653,208 @@ export function CapacityPlanningTool() {
                 </div>
               </div>
 
+              <Separator />
+
+              <h4 className="font-medium text-gray-700">Capacity per Machine (Hours per Day)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="e72-stoll-hours-per-day">E7.2 STOLL</Label>
+                  <Input
+                    id="e72-stoll-hours-per-day"
+                    type="number"
+                    value={e72StollHoursPerDay ?? ""}
+                    onChange={(e) =>
+                      setE72StollHoursPerDay(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="e35-stoll-hours-per-day">E3.5,2 STOLL</Label>
+                  <Input
+                    id="e35-stoll-hours-per-day"
+                    type="number"
+                    value={e35StollHoursPerDay ?? ""}
+                    onChange={(e) =>
+                      setE35StollHoursPerDay(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="e18-swg-hours-per-day">E18 SWG</Label>
+                  <Input
+                    id="e18-swg-hours-per-day"
+                    type="number"
+                    value={e18SwgHoursPerDay ?? ""}
+                    onChange={(e) =>
+                      setE18SwgHoursPerDay(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+              </div>
+
               <div className="flex justify-end">
                 <Button variant="outline" onClick={handleResetToDefaults}>
                   Reset to Defaults
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Separator />
+
+          {/* New Card for Total Machine Capacity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Machine Capacity</CardTitle>
+              <CardDescription>Overall machine time available based on configuration.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Total Weekly Machine Minutes (from inputs):</span>
+                <Badge variant="secondary">
+                  {calculations.derivedTotalMachineMinutesFromInputsWeekly.toFixed(0)} minutes
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Total Daily Machine Hours (from inputs):</span>
+                <Badge variant="secondary">
+                  {(calculations.derivedTotalMachineMinutesFromInputsWeekly / 5 / 60).toFixed(1)} hours
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Total Weekly Machine Hours (from inputs):</span>
+                <Badge variant="secondary">
+                  {(calculations.derivedTotalMachineMinutesFromInputsWeekly / 60).toFixed(1)} hours
+                </Badge>
+              </div>
+              {Math.abs(calculations.derivedTotalMachineMinutesFromInputsWeekly - TOTAL_FIXED_MACHINE_MINUTES_WEEKLY) >
+                1 && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 text-sm">
+                  Warning: Your individual machine settings (
+                  {calculations.derivedTotalMachineMinutesFromInputsWeekly.toFixed(0)} minutes/week) do not sum up to
+                  the assumed total machine capacity of {TOTAL_FIXED_MACHINE_MINUTES_WEEKLY} minutes/week. Calculations
+                  for remaining production and development over-capacity are based on the assumed total.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Separator />
+
+          {/* New Card for Development Payload */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Development Payload Weekly</CardTitle>
+              <CardDescription>Current setup for development items and their machine time usage.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Development Item</TableHead>
+                    <TableHead className="text-right"># of item</TableHead>
+                    <TableHead className="text-right">Time taken per unit (Minutes)</TableHead>
+                    <TableHead className="text-right">Total time used (Minutes)</TableHead>
+                    <TableHead className="text-right">Total time used (Hours)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>Swatches</TableCell>
+                    <TableCell className="flex justify-end">
+                      <Input
+                        type="number"
+                        value={desiredWeeklySwatches ?? ""}
+                        onChange={(e) =>
+                          setDesiredWeeklySwatches(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="w-24 text-right">
+                      <Input
+                        type="number"
+                        value={swatchKnittingMin ?? ""}
+                        onChange={(e) =>
+                          setSwatchKnittingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                        className="w-24 text-right"
+                        disabled={true}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{swatchTotalMinutes.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{swatchTotalHours.toFixed(1)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Samples</TableCell>
+                    <TableCell className="flex justify-end">
+                      <Input
+                        type="number"
+                        value={desiredWeeklySamples ?? ""}
+                        onChange={(e) =>
+                          setDesiredWeeklySamples(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="w-24 text-right">
+                      <Input
+                        type="number"
+                        value={sampleKnittingMin ?? ""}
+                        onChange={(e) =>
+                          setSampleKnittingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                        disabled={true}
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{sampleTotalMinutes.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{sampleTotalHours.toFixed(1)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Grading</TableCell>
+                    <TableCell className="flex justify-end">
+                      <Input
+                        type="number"
+                        value={desiredWeeklyGrading ?? ""}
+                        onChange={(e) =>
+                          setDesiredWeeklyGrading(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="w-24 text-right">
+                      <Input
+                        type="number"
+                        value={gradingKnittingMin ?? ""}
+                        onChange={(e) =>
+                          setGradingKnittingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                        }
+                        disabled={true}
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{gradingTotalMinutes.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{gradingTotalHours.toFixed(1)}</TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-gray-50">
+                    <TableCell>Total Development Time</TableCell>
+                    <TableCell></TableCell> {/* Empty cell for # of item */}
+                    <TableCell></TableCell> {/* Empty cell for Time taken per unit */}
+                    <TableCell className="text-right">
+                      {calculations.totalDevelopmentMinutesWeekly.toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-right">{calculations.totalDevelopmentHoursWeekly.toFixed(1)}</TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-blue-50">
+                    <TableCell>Remaining Machine Time</TableCell>
+                    <TableCell></TableCell> {/* Empty cell for # of item */}
+                    <TableCell></TableCell> {/* Empty cell for Time taken per unit */}
+                    <TableCell className="text-right">{remainingMachineMinutesWeekly.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{remainingMachineHoursWeekly.toFixed(1)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 
@@ -847,6 +976,45 @@ export function CapacityPlanningTool() {
             </CardContent>
           </Card>
 
+          {/* New Card for Actual Development Capacity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Actual Development Capacity (Weekly Max)</CardTitle>
+              <CardDescription>
+                Maximum achievable development units if all {TOTAL_FIXED_MACHINE_MINUTES_WEEKLY} weekly machine minutes
+                were dedicated to a single type or a specific combo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Development Item</TableHead>
+                    <TableHead className="text-right">Max Units/Week</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>Swatches (if only swatches)</TableCell>
+                    <TableCell className="text-right">{calculations.maxSwatchesIfOnlySwatches.toFixed(0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Samples (if only samples)</TableCell>
+                    <TableCell className="text-right">{calculations.maxSamplesIfOnlySamples.toFixed(0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Grading (if only grading)</TableCell>
+                    <TableCell className="text-right">{calculations.maxGradingIfOnlyGrading.toFixed(0)}</TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-gray-50">
+                    <TableCell>Combo (80 Swatches, 19 Samples, 18 Grading)</TableCell>
+                    <TableCell className="text-right">80 Swatches, 19 Samples, 18 Grading</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Machine Capacity Overview</CardTitle>
@@ -915,112 +1083,6 @@ export function CapacityPlanningTool() {
 
               <Separator className="my-4" />
 
-              <h4 className="font-medium text-gray-700 mb-2">Development Payload (Units/Day)</h4>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Machine Type</TableHead>
-                    <TableHead className="text-right">Units/Day</TableHead>
-                    <TableHead className="text-right">Units/Week</TableHead>
-                    <TableHead className="text-right">Units/Year</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell>E7.2 STOLL</TableCell>
-                    <TableCell className="flex justify-end">
-                      <Input
-                        type="number"
-                        value={devPayloadE72StollUnits ?? ""}
-                        onChange={(e) =>
-                          handleDevUnitsChange(
-                            "e72",
-                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                          )
-                        }
-                        disabled={isProductionOnly}
-                        className="w-24 text-right"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">{((devPayloadE72StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((devPayloadE72StollUnits ?? 0) * 5 * 52).toFixed(0)}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>E3.5,2 STOLL</TableCell>
-                    <TableCell className="flex justify-end">
-                      <Input
-                        type="number"
-                        value={devPayloadE35StollUnits ?? ""}
-                        onChange={(e) =>
-                          handleDevUnitsChange(
-                            "e35",
-                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                          )
-                        }
-                        disabled={isProductionOnly}
-                        className="w-24 text-right"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">{((devPayloadE35StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((devPayloadE35StollUnits ?? 0) * 5 * 52).toFixed(0)}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>E18 SWG</TableCell>
-                    <TableCell className="flex justify-end">
-                      <Input
-                        type="number"
-                        value={devPayloadE18SwgUnits ?? ""}
-                        onChange={(e) =>
-                          handleDevUnitsChange(
-                            "e18",
-                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                          )
-                        }
-                        disabled={isProductionOnly}
-                        className="w-24 text-right"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">{((devPayloadE18SwgUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((devPayloadE18SwgUnits ?? 0) * 5 * 52).toFixed(0)}</TableCell>
-                  </TableRow>
-                  <TableRow className="font-bold bg-gray-50">
-                    <TableCell>Total</TableCell>
-                    <TableCell className="text-right">{calculations.totalDevUnitsDaily.toFixed(1)}</TableCell>
-                    <TableCell className="text-right">{(calculations.totalDevUnitsDaily * 5).toFixed(1)}</TableCell>
-                    <TableCell className="text-right">
-                      {(calculations.totalDevUnitsDaily * 5 * 52).toFixed(1)}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-              {isProdAndDev && (
-                <div className="mt-4 space-y-2">
-                  {calculations.e72StollOverCapacity && (
-                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                      Warning: E7.2 STOLL combined payload (
-                      {(calculations.devPayloadE72StollUnits ?? 0) + (calculations.prodPayloadE72StollUnits ?? 0)}{" "}
-                      units) exceeds Actual Capacity ({derivedE72StollActualCapacity} units).
-                    </div>
-                  )}
-                  {calculations.e35StollOverCapacity && (
-                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                      Warning: E3.5,2 STOLL combined payload (
-                      {(calculations.devPayloadE35StollUnits ?? 0) + (calculations.prodPayloadE35StollUnits ?? 0)}{" "}
-                      units) exceeds Actual Capacity ({derivedE35StollActualCapacity} units).
-                    </div>
-                  )}
-                  {calculations.e18SwgOverCapacity && (
-                    <div className="p-2 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                      Warning: E18 SWG combined payload (
-                      {(calculations.devPayloadE18SwgUnits ?? 0) + (calculations.prodPayloadE18SwgUnits ?? 0)} units)
-                      exceeds Actual Capacity ({derivedE18SwgActualCapacity} units).
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <Separator className="my-4" />
-
               <h4 className="font-medium text-gray-700 mb-2">
                 {isProductionOnly ? "Production Payload (Daily)" : "Production Payload (Units/Day)"}
               </h4>
@@ -1029,6 +1091,8 @@ export function CapacityPlanningTool() {
                   <TableRow>
                     <TableHead>Machine Type</TableHead>
                     <TableHead className="text-right">Units/Day</TableHead>
+                    <TableHead className="text-right">Time per Unit (Minutes)</TableHead>
+                    <TableHead className="text-right">Total Time (Minutes/Day)</TableHead>
                     <TableHead className="text-right">Units/Week</TableHead>
                     <TableHead className="text-right">Units/Year</TableHead>
                   </TableRow>
@@ -1039,20 +1103,18 @@ export function CapacityPlanningTool() {
                     <TableCell className="flex justify-end">
                       <Input
                         type="number"
-                        value={prodPayloadE72StollUnits ?? ""}
-                        onChange={(e) =>
-                          handleProdUnitsChange(
-                            "e72",
-                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                          )
-                        }
-                        disabled={isDevelopmentOnly}
+                        value={calculations.prodPayloadE72StollUnitsDisplay.toFixed(1)}
+                        disabled
                         className="w-24 text-right"
                       />
                     </TableCell>
-                    <TableCell className="text-right">{((prodPayloadE72StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{PROD_KNITTING_TIME_E72}</TableCell>
+                    <TableCell className="text-right">{e72StollDailyTotalTime.toFixed(1)}</TableCell>
                     <TableCell className="text-right">
-                      {((prodPayloadE72StollUnits ?? 0) * 5 * 52).toFixed(0)}
+                      {(calculations.prodPayloadE72StollUnitsDisplay * 5).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE72StollUnitsDisplay * 5 * 52).toFixed(1)}
                     </TableCell>
                   </TableRow>
                   <TableRow>
@@ -1060,20 +1122,18 @@ export function CapacityPlanningTool() {
                     <TableCell className="flex justify-end">
                       <Input
                         type="number"
-                        value={prodPayloadE35StollUnits ?? ""}
-                        onChange={(e) =>
-                          handleProdUnitsChange(
-                            "e35",
-                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                          )
-                        }
-                        disabled={isDevelopmentOnly}
+                        value={calculations.prodPayloadE35StollUnitsDisplay.toFixed(1)}
+                        disabled
                         className="w-24 text-right"
                       />
                     </TableCell>
-                    <TableCell className="text-right">{((prodPayloadE35StollUnits ?? 0) * 5).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{PROD_KNITTING_TIME_E35}</TableCell>
+                    <TableCell className="text-right">{e35StollDailyTotalTime.toFixed(1)}</TableCell>
                     <TableCell className="text-right">
-                      {((prodPayloadE35StollUnits ?? 0) * 5 * 52).toFixed(0)}
+                      {(calculations.prodPayloadE35StollUnitsDisplay * 5).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE35StollUnitsDisplay * 5 * 52).toFixed(1)}
                     </TableCell>
                   </TableRow>
                   <TableRow>
@@ -1081,28 +1141,53 @@ export function CapacityPlanningTool() {
                     <TableCell className="flex justify-end">
                       <Input
                         type="number"
-                        value={prodPayloadE18SwgUnits ?? ""}
-                        onChange={(e) =>
-                          handleProdUnitsChange(
-                            "e18",
-                            e.target.value === "" ? null : Number.parseInt(e.target.value) || 0,
-                          )
-                        }
-                        disabled={isDevelopmentOnly}
+                        value={calculations.prodPayloadE18SwgUnitsDisplay.toFixed(1)}
+                        disabled
                         className="w-24 text-right"
                       />
                     </TableCell>
-                    <TableCell className="text-right">{((prodPayloadE18SwgUnits ?? 0) * 5).toFixed(0)}</TableCell>
-                    <TableCell className="text-right">{((prodPayloadE18SwgUnits ?? 0) * 5 * 52).toFixed(0)}</TableCell>
+                    <TableCell className="text-right">{PROD_KNITTING_TIME_E18}</TableCell>
+                    <TableCell className="text-right">{e18SwgDailyTotalTime.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE18SwgUnitsDisplay * 5).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE18SwgUnitsDisplay * 5 * 52).toFixed(1)}
+                    </TableCell>
                   </TableRow>
                   <TableRow className="font-bold bg-gray-50">
                     <TableCell>Total</TableCell>
-                    <TableCell className="text-right">{calculations.totalProdUnitsDaily.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {(
+                        calculations.prodPayloadE72StollUnitsDisplay +
+                        calculations.prodPayloadE35StollUnitsDisplay +
+                        calculations.prodPayloadE18SwgUnitsDisplay
+                      ).toFixed(1)}
+                    </TableCell>
+                    <TableCell></TableCell> {/* Empty cell for Time per Unit */}
+                    <TableCell className="text-right">{totalDailyProductionTime.toFixed(1)}</TableCell>
                     <TableCell className="text-right">{calculations.totalWeeklyProductionUnits.toFixed(1)}</TableCell>
                     <TableCell className="text-right">
                       {calculations.totalAnnualProductionUnits.toLocaleString()}
                     </TableCell>
                   </TableRow>
+                  <TableRow className="font-bold bg-blue-50">
+                    <TableCell>Total Time (Minutes/Day)</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right">{totalDailyProductionTime.toFixed(1)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-blue-50">
+                    <TableCell>Total Time (Minutes/Week)</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right">{totalWeeklyProductionTime.toFixed(1)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                  
                 </TableBody>
               </Table>
             </CardContent>
