@@ -30,10 +30,15 @@ export function CapacityPlanningTool() {
   const [sampleKnittingMin, setSampleKnittingMin] = useState<number | null>(100)
   const [gradingKnittingMin, setGradingKnittingMin] = useState<number | null>(450)
 
-  // Machine Knitting Times (in minutes per garment) - Used for converting units to minutes for labor calculations
-  const [e72StollKnittingTime, setE72StollKnittingTime] = useState<number | null>(3)
-  const [e35StollKnittingTime, setE35StollKnittingTime] = useState<number | null>(1)
-  const [e18SwgKnittingTime, setE18SwgKnittingTime] = useState<number | null>(1)
+  // Number of Machines (formerly Machine Knitting Times in UI)
+  const [numE72StollMachines, setNumE72StollMachines] = useState<number | null>(3)
+  const [numE35StollMachines, setNumE35StollMachines] = useState<number | null>(1)
+  const [numE18SwgMachines, setNumE18SwgMachines] = useState<number | null>(1)
+
+  // Internal constants for actual knitting times per garment (from spreadsheet)
+  const E72_STOLL_KNITTING_TIME_PER_GARMENT = 3
+  const E35_STOLL_KNITTING_TIME_PER_GARMENT = 1
+  const E18_SWG_KNITTING_TIME_PER_GARMENT = 1
 
   // Actual Machine Capacity (Units per Day) - these are the base capacities
   const [actualE72StollCapacity, setActualE72StollCapacity] = useState<number | null>(24)
@@ -149,9 +154,9 @@ export function CapacityPlanningTool() {
     setSampleKnittingMin(100)
     setGradingKnittingMin(450)
 
-    setE72StollKnittingTime(3)
-    setE35StollKnittingTime(1)
-    setE18SwgKnittingTime(1)
+    setNumE72StollMachines(3)
+    setNumE35StollMachines(1)
+    setNumE18SwgMachines(1)
 
     setActualE72StollCapacity(24)
     setActualE35StollCapacity(10)
@@ -176,6 +181,9 @@ export function CapacityPlanningTool() {
         setDesiredWeeklySwatches(0)
         setDesiredWeeklySamples(0)
         setDesiredWeeklyGrading(0)
+        setNumE72StollMachines(3)
+        setNumE35StollMachines(1)
+        setNumE18SwgMachines(1)
         setDevPayloadE72StollUnits(0)
         setDevPayloadE35StollUnits(0)
         setDevPayloadE18SwgUnits(0)
@@ -190,6 +198,9 @@ export function CapacityPlanningTool() {
         setDesiredWeeklySwatches(14)
         setDesiredWeeklySamples(6)
         setDesiredWeeklyGrading(4)
+        setNumE72StollMachines(3) // Number of machines from spreadsheet
+        setNumE35StollMachines(1)
+        setNumE18SwgMachines(1)
         setProdPayloadE72StollUnits(16) // Production units from spreadsheet
         setProdPayloadE35StollUnits(2)
         setProdPayloadE18SwgUnits(3)
@@ -204,6 +215,9 @@ export function CapacityPlanningTool() {
         setDesiredWeeklySwatches(80)
         setDesiredWeeklySamples(19)
         setDesiredWeeklyGrading(18)
+        setNumE72StollMachines(3) // Number of machines from spreadsheet
+        setNumE35StollMachines(1)
+        setNumE18SwgMachines(1)
         setProdPayloadE72StollUnits(0)
         setProdPayloadE35StollUnits(0)
         setProdPayloadE18SwgUnits(0)
@@ -269,9 +283,9 @@ export function CapacityPlanningTool() {
 
     // Calculate minutes consumed by development units (for labor calculations, not machine capacity)
     const devKnittingMinutesDailyPayload =
-      (devPayloadE72StollUnits ?? 0) * (e72StollKnittingTime ?? 0) +
-      (devPayloadE35StollUnits ?? 0) * (e35StollKnittingTime ?? 0) +
-      (devPayloadE18SwgUnits ?? 0) * (e18SwgKnittingTime ?? 0)
+      (devPayloadE72StollUnits ?? 0) * E72_STOLL_KNITTING_TIME_PER_GARMENT +
+      (devPayloadE35StollUnits ?? 0) * E35_STOLL_KNITTING_TIME_PER_GARMENT +
+      (devPayloadE18SwgUnits ?? 0) * E18_SWG_KNITTING_TIME_PER_GARMENT
 
     const totalWeeklyProductionUnits = totalProdUnitsDaily * 5
     const totalMonthlyProductionUnits = totalProdUnitsDaily * (365 / 12)
@@ -279,7 +293,8 @@ export function CapacityPlanningTool() {
 
     // Calculate production units achievable with remaining labor hours
     const avgKnittingTimePerGarment =
-      ((e72StollKnittingTime ?? 0) + (e35StollKnittingTime ?? 0) + (e18SwgKnittingTime ?? 0)) / 3
+      (E72_STOLL_KNITTING_TIME_PER_GARMENT + E35_STOLL_KNITTING_TIME_PER_GARMENT + E18_SWG_KNITTING_TIME_PER_GARMENT) /
+      3
     const avgProductionHoursPerGarment = avgKnittingTimePerGarment / 60 // Convert minutes to hours
 
     let achievableProductionUnitsAnnualByLabor = 0
@@ -315,9 +330,10 @@ export function CapacityPlanningTool() {
     const revenueGap = (targetAnnualRevenue ?? 0) - totalProjectedRevenue
 
     // Actual machine minutes per day (base capacity for comparison)
-    const actualE72StollMinutesDaily = (actualE72StollCapacity ?? 0) * (e72StollKnittingTime ?? 0)
-    const actualE35StollMinutesDaily = (actualE35StollCapacity ?? 0) * (e35StollKnittingTime ?? 0)
-    const actualE18SwgMinutesDaily = (actualE18SwgCapacity ?? 0) * (e18SwgKnittingTime ?? 0)
+    // This now uses the actual knitting time per garment constants
+    const actualE72StollMinutesDaily = (actualE72StollCapacity ?? 0) * E72_STOLL_KNITTING_TIME_PER_GARMENT
+    const actualE35StollMinutesDaily = (actualE35StollCapacity ?? 0) * E35_STOLL_KNITTING_TIME_PER_GARMENT
+    const actualE18SwgMinutesDaily = (actualE18SwgCapacity ?? 0) * E18_SWG_KNITTING_TIME_PER_GARMENT
     const totalActualMachineMinutesDaily =
       actualE72StollMinutesDaily + actualE35StollMinutesDaily + actualE18SwgMinutesDaily
 
@@ -378,9 +394,9 @@ export function CapacityPlanningTool() {
     swatchKnittingMin,
     sampleKnittingMin,
     gradingKnittingMin,
-    e72StollKnittingTime,
-    e35StollKnittingTime,
-    e18SwgKnittingTime,
+    numE72StollMachines, // Now using numE72StollMachines
+    numE35StollMachines, // Now using numE35StollMachines
+    numE18SwgMachines, // Now using numE18SwgMachines
     actualE72StollCapacity,
     actualE35StollCapacity,
     actualE18SwgCapacity,
@@ -567,7 +583,7 @@ export function CapacityPlanningTool() {
                 </div>
 
                 <div className="space-y-4">
-                  <h5 className="font-medium">Sample</h5>
+                  <h5 className="font-medium">Development Service</h5>
                   <div className="space-y-2">
                     <Label htmlFor="sample-knitting-min">Knitting</Label>
                     <Input
@@ -641,38 +657,38 @@ export function CapacityPlanningTool() {
 
               <Separator />
 
-              <h4 className="font-medium text-gray-700">Machine Knitting Times (Minutes per Garment)</h4>
+              <h4 className="font-medium text-gray-700">Number of Machines</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="e72-stoll-knitting-time">E7.2 STOLL</Label>
+                  <Label htmlFor="num-e72-stoll-machines">E7.2 STOLL</Label>
                   <Input
-                    id="e72-stoll-knitting-time"
+                    id="num-e72-stoll-machines"
                     type="number"
-                    value={e72StollKnittingTime ?? ""}
+                    value={numE72StollMachines ?? ""}
                     onChange={(e) =>
-                      setE72StollKnittingTime(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                      setNumE72StollMachines(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="e35-stoll-knitting-time">E3.5,2 STOLL</Label>
+                  <Label htmlFor="num-e35-stoll-machines">E3.5,2 STOLL</Label>
                   <Input
-                    id="e35-stoll-knitting-time"
+                    id="num-e35-stoll-machines"
                     type="number"
-                    value={e35StollKnittingTime ?? ""}
+                    value={numE35StollMachines ?? ""}
                     onChange={(e) =>
-                      setE35StollKnittingTime(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                      setNumE35StollMachines(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="e18-swg-knitting-time">E18 SWG</Label>
+                  <Label htmlFor="num-e18-swg-machines">E18 SWG</Label>
                   <Input
-                    id="e18-swg-knitting-time"
+                    id="num-e18-swg-machines"
                     type="number"
-                    value={e18SwgKnittingTime ?? ""}
+                    value={numE18SwgMachines ?? ""}
                     onChange={(e) =>
-                      setE18SwgKnittingTime(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
+                      setNumE18SwgMachines(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                     }
                   />
                 </div>
