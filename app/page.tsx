@@ -152,7 +152,7 @@ export default function FinanceDashboard() {
       dailyProductionCapacity = 58
     }
 
-    const annualProductionCapacity = dailyProductionCapacity * 365
+    const annualProductionCapacity = dailyProductionCapacity * 5 * 52 // Corrected to 5 days/week * 52 weeks/year
     const productionRevenue = annualProductionCapacity * (avgGarmentPrice ?? 0)
 
     const annualSwatches = (swatchesPerWeek ?? 0) * 52
