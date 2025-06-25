@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 
 export function CapacityPlanningTool() {
   // User Inputs for Scenario Parameters
-  const [targetAnnualRevenue, setTargetAnnualRevenue] = useState<number | null>(100000)
+  const [targetAnnualRevenue, setTargetAnnualRevenue] = useState<number | null>(100000000)
   const [numStaff, setNumStaff] = useState<number | null>(5)
   const [desiredWeeklySwatches, setDesiredWeeklySwatches] = useState<number | null>(20)
   const [desiredWeeklySamples, setDesiredWeeklySamples] = useState<number | null>(4)
@@ -25,18 +25,10 @@ export function CapacityPlanningTool() {
   const [samplePrice, setSamplePrice] = useState<number | null>(2000)
   const [gradingPrice, setGradingPrice] = useState<number | null>(500)
 
-  // Service Time Details (in minutes) - Used for labor hour calculations, not direct machine allocation
-  const [swatchProgrammingMin, setSwatchProgrammingMin] = useState<number | null>(30)
+  // Service Time Details (in minutes) - Used for labor hour calculations, only knitting
   const [swatchKnittingMin, setSwatchKnittingMin] = useState<number | null>(25)
-  const [swatchLinkingMin, setSwatchLinkingMin] = useState<number | null>(0)
-
-  const [sampleProgrammingMin, setSampleProgrammingMin] = useState<number | null>(180)
   const [sampleKnittingMin, setSampleKnittingMin] = useState<number | null>(100)
-  const [sampleLinkingMin, setSampleLinkingMin] = useState<number | null>(60)
-
-  const [gradingProgrammingMin, setGradingProgrammingMin] = useState<number | null>(600)
   const [gradingKnittingMin, setGradingKnittingMin] = useState<number | null>(450)
-  const [gradingLinkingMin, setGradingLinkingMin] = useState<number | null>(300)
 
   // Machine Knitting Times (in minutes per garment) - Used for converting units to minutes for labor calculations
   const [e72StollKnittingTime, setE72StollKnittingTime] = useState<number | null>(3)
@@ -153,17 +145,9 @@ export function CapacityPlanningTool() {
     setSamplePrice(2000)
     setGradingPrice(500)
 
-    setSwatchProgrammingMin(30)
     setSwatchKnittingMin(25)
-    setSwatchLinkingMin(0)
-
-    setSampleProgrammingMin(180)
     setSampleKnittingMin(100)
-    setSampleLinkingMin(60)
-
-    setGradingProgrammingMin(600)
     setGradingKnittingMin(450)
-    setGradingLinkingMin(300)
 
     setE72StollKnittingTime(3)
     setE35StollKnittingTime(1)
@@ -244,36 +228,18 @@ export function CapacityPlanningTool() {
     const totalAvailableLaborHoursPerWeek = currentNumStaff * currentWorkHoursPerWeekPerPerson
     const totalAvailableLaborHoursPerYear = totalAvailableLaborHoursPerWeek * 52
 
-    // Calculate hours needed for desired development units (for labor and revenue, not machine allocation)
-    const programmingHoursPerSwatchCalc = (swatchProgrammingMin ?? 0) / 60
+    // Calculate hours needed for desired development units (only knitting time)
     const knittingHoursPerSwatchCalc = (swatchKnittingMin ?? 0) / 60
-    const linkingHoursPerSwatchCalc = (swatchLinkingMin ?? 0) / 60
-
-    const programmingHoursPerSampleCalc = (sampleProgrammingMin ?? 0) / 60
     const knittingHoursPerSampleCalc = (sampleKnittingMin ?? 0) / 60
-    const linkingHoursPerSampleCalc = (sampleLinkingMin ?? 0) / 60
-
-    const programmingHoursPerGradingCalc = (gradingProgrammingMin ?? 0) / 60
     const knittingHoursPerGradingCalc = (gradingKnittingMin ?? 0) / 60
-    const linkingHoursPerGradingCalc = (gradingLinkingMin ?? 0) / 60
-
-    const totalDevelopmentProgrammingHoursWeekly =
-      (desiredWeeklySwatches ?? 0) * programmingHoursPerSwatchCalc +
-      (desiredWeeklySamples ?? 0) * programmingHoursPerSampleCalc +
-      (desiredWeeklyGrading ?? 0) * programmingHoursPerGradingCalc
 
     const totalDevelopmentKnittingHoursWeekly =
       (desiredWeeklySwatches ?? 0) * knittingHoursPerSwatchCalc +
       (desiredWeeklySamples ?? 0) * knittingHoursPerSampleCalc +
       (desiredWeeklyGrading ?? 0) * knittingHoursPerGradingCalc
 
-    const totalDevelopmentLinkingHoursWeekly =
-      (desiredWeeklySwatches ?? 0) * linkingHoursPerSwatchCalc +
-      (desiredWeeklySamples ?? 0) * linkingHoursPerSampleCalc +
-      (desiredWeeklyGrading ?? 0) * linkingHoursPerGradingCalc
-
-    const totalDevelopmentHoursWeekly =
-      totalDevelopmentProgrammingHoursWeekly + totalDevelopmentKnittingHoursWeekly + totalDevelopmentLinkingHoursWeekly
+    // Total development hours weekly now only includes knitting
+    const totalDevelopmentHoursWeekly = totalDevelopmentKnittingHoursWeekly
 
     // Service pricing (using state variables)
     const currentSwatchPrice = swatchPrice ?? 0
@@ -369,8 +335,6 @@ export function CapacityPlanningTool() {
       totalAvailableLaborHoursPerYear,
       totalDevelopmentHoursWeekly,
       totalDevelopmentKnittingHoursWeekly,
-      totalDevelopmentLinkingHoursWeekly,
-      totalDevelopmentProgrammingHoursWeekly,
       developmentRevenueWeekly,
       developmentRevenueAnnual,
       remainingLaborHoursForProductionWeekly,
@@ -411,15 +375,9 @@ export function CapacityPlanningTool() {
     avgGarmentPrice,
     laborRatePerHour,
     workHoursPerWeekPerPerson,
-    swatchProgrammingMin,
     swatchKnittingMin,
-    swatchLinkingMin,
-    sampleProgrammingMin,
     sampleKnittingMin,
-    sampleLinkingMin,
-    gradingProgrammingMin,
     gradingKnittingMin,
-    gradingLinkingMin,
     e72StollKnittingTime,
     e35StollKnittingTime,
     e18SwgKnittingTime,
@@ -591,21 +549,10 @@ export function CapacityPlanningTool() {
 
               <Separator />
 
-              <h4 className="font-medium text-gray-700">Service Time Details (Minutes per Unit)</h4>
+              <h4 className="font-medium text-gray-700">Service Knitting Time (Minutes per Unit)</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-4">
                   <h5 className="font-medium">Swatch</h5>
-                  <div className="space-y-2">
-                    <Label htmlFor="swatch-programming-min">Programming</Label>
-                    <Input
-                      id="swatch-programming-min"
-                      type="number"
-                      value={swatchProgrammingMin ?? ""}
-                      onChange={(e) =>
-                        setSwatchProgrammingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="swatch-knitting-min">Knitting</Label>
                     <Input
@@ -617,32 +564,10 @@ export function CapacityPlanningTool() {
                       }
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="swatch-linking-min">Linking</Label>
-                    <Input
-                      id="swatch-linking-min"
-                      type="number"
-                      value={swatchLinkingMin ?? ""}
-                      onChange={(e) =>
-                        setSwatchLinkingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
                 </div>
 
                 <div className="space-y-4">
                   <h5 className="font-medium">Sample</h5>
-                  <div className="space-y-2">
-                    <Label htmlFor="sample-programming-min">Programming</Label>
-                    <Input
-                      id="sample-programming-min"
-                      type="number"
-                      value={sampleProgrammingMin ?? ""}
-                      onChange={(e) =>
-                        setSampleProgrammingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="sample-knitting-min">Knitting</Label>
                     <Input
@@ -654,32 +579,10 @@ export function CapacityPlanningTool() {
                       }
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sample-linking-min">Linking</Label>
-                    <Input
-                      id="sample-linking-min"
-                      type="number"
-                      value={sampleLinkingMin ?? ""}
-                      onChange={(e) =>
-                        setSampleLinkingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
                 </div>
 
                 <div className="space-y-4">
                   <h5 className="font-medium">Grading</h5>
-                  <div className="space-y-2">
-                    <Label htmlFor="grading-programming-min">Programming</Label>
-                    <Input
-                      id="grading-programming-min"
-                      type="number"
-                      value={gradingProgrammingMin ?? ""}
-                      onChange={(e) =>
-                        setGradingProgrammingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="grading-knitting-min">Knitting</Label>
                     <Input
@@ -688,17 +591,6 @@ export function CapacityPlanningTool() {
                       value={gradingKnittingMin ?? ""}
                       onChange={(e) =>
                         setGradingKnittingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="grading-linking-min">Linking</Label>
-                    <Input
-                      id="grading-linking-min"
-                      type="number"
-                      value={gradingLinkingMin ?? ""}
-                      onChange={(e) =>
-                        setGradingLinkingMin(e.target.value === "" ? null : Number.parseInt(e.target.value) || 0)
                       }
                     />
                   </div>
@@ -933,23 +825,9 @@ export function CapacityPlanningTool() {
                     </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="pl-8">Programming</TableCell>
-                    <TableCell className="text-right">
-                      {calculations.totalDevelopmentProgrammingHoursWeekly.toFixed(1)}
-                    </TableCell>
-                    <TableCell className="text-right"></TableCell>
-                  </TableRow>
-                  <TableRow>
                     <TableCell className="pl-8">Knitting (Dev)</TableCell>
                     <TableCell className="text-right">
                       {((calculations.devKnittingMinutesDailyPayload / 60) * 5).toFixed(1)}
-                    </TableCell>
-                    <TableCell className="text-right"></TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="pl-8">Linking (Dev)</TableCell>
-                    <TableCell className="text-right">
-                      {calculations.totalDevelopmentLinkingHoursWeekly.toFixed(1)}
                     </TableCell>
                     <TableCell className="text-right"></TableCell>
                   </TableRow>
