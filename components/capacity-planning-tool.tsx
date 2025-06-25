@@ -511,8 +511,8 @@ export function CapacityPlanningTool() {
           <h3 className="text-lg font-semibold mb-4">Load Scenarios</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button onClick={() => applyScenarioDefaults("production-only")}>Production Only</Button>
-            <Button onClick={() => applyScenarioDefaults("dev-worst-case")}>Dev Worst Case</Button>
-            <Button onClick={() => applyScenarioDefaults("dev-best-case")}>Dev Best Case</Button>
+            <Button onClick={() => applyScenarioDefaults("dev-worst-case")}>Dev Worst Case + Production </Button>
+            <Button onClick={() => applyScenarioDefaults("dev-best-case")}>Development Only</Button>
           </div>
 
           <Separator />
@@ -928,7 +928,7 @@ export function CapacityPlanningTool() {
                 <TableBody>
                   <TableRow>
                     <TableCell>E7.2 STOLL</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="flex justify-end">
                       <Input
                         type="number"
                         value={devPayloadE72StollUnits ?? ""}
@@ -947,7 +947,7 @@ export function CapacityPlanningTool() {
                   </TableRow>
                   <TableRow>
                     <TableCell>E3.5,2 STOLL</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="flex justify-end">
                       <Input
                         type="number"
                         value={devPayloadE35StollUnits ?? ""}
@@ -966,7 +966,7 @@ export function CapacityPlanningTool() {
                   </TableRow>
                   <TableRow>
                     <TableCell>E18 SWG</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="flex justify-end">
                       <Input
                         type="number"
                         value={devPayloadE18SwgUnits ?? ""}
@@ -1036,7 +1036,7 @@ export function CapacityPlanningTool() {
                 <TableBody>
                   <TableRow>
                     <TableCell>E7.2 STOLL</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="flex justify-end">
                       <Input
                         type="number"
                         value={prodPayloadE72StollUnits ?? ""}
@@ -1057,7 +1057,7 @@ export function CapacityPlanningTool() {
                   </TableRow>
                   <TableRow>
                     <TableCell>E3.5,2 STOLL</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="flex justify-end">
                       <Input
                         type="number"
                         value={prodPayloadE35StollUnits ?? ""}
@@ -1078,7 +1078,7 @@ export function CapacityPlanningTool() {
                   </TableRow>
                   <TableRow>
                     <TableCell>E18 SWG</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="flex justify-end">
                       <Input
                         type="number"
                         value={prodPayloadE18SwgUnits ?? ""}
