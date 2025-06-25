@@ -282,10 +282,12 @@ export function CapacityPlanningTool() {
       (prodPayloadE72StollUnits ?? 0) + (prodPayloadE35StollUnits ?? 0) + (prodPayloadE18SwgUnits ?? 0)
 
     // Calculate minutes consumed by development units (for labor calculations, not machine capacity)
-    const devKnittingMinutesDailyPayload =
-      (devPayloadE72StollUnits ?? 0) * E72_STOLL_KNITTING_TIME_PER_GARMENT +
-      (devPayloadE35StollUnits ?? 0) * E35_STOLL_KNITTING_TIME_PER_GARMENT +
-      (devPayloadE18SwgUnits ?? 0) * E18_SWG_KNITTING_TIME_PER_GARMENT
+    // Remove the `devKnittingMinutesDailyPayload` calculation.
+    // It was previously defined as:
+    // const devKnittingMinutesDailyPayload =
+    //   (devPayloadE72StollUnits ?? 0) * E72_STOLL_KNITTING_TIME_PER_GARMENT +
+    //   (devPayloadE35StollUnits ?? 0) * E35_STOLL_KNITTING_TIME_PER_GARMENT +
+    //   (devPayloadE18SwgUnits ?? 0) * E18_SWG_KNITTING_TIME_PER_GARMENT
 
     const totalWeeklyProductionUnits = totalProdUnitsDaily * 5
     const totalMonthlyProductionUnits = totalProdUnitsDaily * (365 / 12)
@@ -362,7 +364,6 @@ export function CapacityPlanningTool() {
       revenueGap,
       hoursToReachTargetRevenue,
       totalActualMachineMinutesDaily, // Still useful for overall machine time context
-      devKnittingMinutesDailyPayload, // Still useful for labor time consumed by dev knitting
       totalDevUnitsDaily,
       totalProdUnitsDaily,
       totalWeeklyProductionUnits,
@@ -840,13 +841,15 @@ export function CapacityPlanningTool() {
                       %
                     </TableCell>
                   </TableRow>
+                  {/* Remove the TableRow that displays "Knitting (Dev)".
+                  It was previously:
                   <TableRow>
                     <TableCell className="pl-8">Knitting (Dev)</TableCell>
                     <TableCell className="text-right">
                       {((calculations.devKnittingMinutesDailyPayload / 60) * 5).toFixed(1)}
                     </TableCell>
                     <TableCell className="text-right"></TableCell>
-                  </TableRow>
+                  </TableRow> */}
                   <TableRow className="font-bold bg-gray-50">
                     <TableCell>Remaining for Production</TableCell>
                     <TableCell className="text-right">

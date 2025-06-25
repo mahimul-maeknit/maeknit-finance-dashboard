@@ -70,15 +70,6 @@ const MACHINE_CAPACITY = {
 export default function FinanceDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const AUTHORIZED_EMAILS = [
-    "mahimul@maeknit.io",
-    "mallory@maeknit.io",
-    "elias@maeknit.io",
-    "tech@maeknit.io",
-    "intel@maeknit.io",
-    "matt@maeknit.io",
-    "matt.blodgett@praxisvcge.com",
-  ]
 
   // Editable expense fields
   const [teamLabor, setTeamLabor] = useState<number | null>(50684)
@@ -334,7 +325,7 @@ export default function FinanceDashboard() {
   // Fetch settings on component mount if authorized
   useEffect(() => {
     const fetchSettings = async () => {
-      if (status === "authenticated" && AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
+      if (status === "authenticated") {
         try {
           const response = await fetch("/api/settings")
           if (!response.ok) {
@@ -384,7 +375,7 @@ export default function FinanceDashboard() {
   useEffect(() => {
     if (status === "loading") return // Do nothing while loading session
 
-    if (status === "unauthenticated" || !AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
+    if (status === "unauthenticated") {
       router.push("/login")
     }
   }, [session, status, router])
@@ -400,9 +391,6 @@ export default function FinanceDashboard() {
 
   // If authenticated but not authorized, the useEffect above will redirect.
   // This ensures the dashboard content is only rendered for authorized users.
-  if (status === "unauthenticated" || !AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
-    return null // Or a simple message, as the redirect will happen
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:px-8 mx-auto space-y-6">
@@ -481,7 +469,7 @@ export default function FinanceDashboard() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="samples">Development Services/Week</Label>
+                      <Label htmlFor="samples">Samples/Week</Label>
                       <Input
                         id="samples"
                         type="number"
