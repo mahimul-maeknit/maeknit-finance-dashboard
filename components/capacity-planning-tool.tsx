@@ -377,7 +377,7 @@ export function CapacityPlanningTool() {
   const e18SwgDailyTotalTime = calculations.prodPayloadE18SwgUnitsDisplay * PROD_KNITTING_TIME_E18
   const totalDailyProductionTime = e72StollDailyTotalTime + e35StollDailyTotalTime + e18SwgDailyTotalTime
   const totalWeeklyProductionTime = totalDailyProductionTime * 5
-  // const totalAnnualProductionTime = totalWeeklyProductionTime * 52
+  const totalAnnualProductionTime = totalWeeklyProductionTime * 52
 
   return (
     <div className="space-y-6">
@@ -940,7 +940,7 @@ export function CapacityPlanningTool() {
                 </TableHeader>
                 <TableBody>
                   <TableRow>
-                    <TableCell>Total Available</TableCell>
+                    <TableCell>Weekly working hour total</TableCell>
                     <TableCell className="text-right">
                       {calculations.totalAvailableLaborHoursPerWeek.toFixed(1)}
                     </TableCell>
@@ -957,8 +957,8 @@ export function CapacityPlanningTool() {
                       %
                     </TableCell>
                   </TableRow>
-                  <TableRow className="font-bold bg-gray-50">
-                    <TableCell>Remaining for Production</TableCell>
+                  <TableRow>
+                    <TableCell>Production (TOTAL)</TableCell>
                     <TableCell className="text-right">
                       {calculations.remainingLaborHoursForProductionWeekly.toFixed(1)}
                     </TableCell>
@@ -970,6 +970,11 @@ export function CapacityPlanningTool() {
                       ).toFixed(1)}
                       %
                     </TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-gray-50">
+                    <TableCell>Remaining Time</TableCell>
+                    <TableCell className="text-right">0.0</TableCell>
+                    <TableCell className="text-right">0.0%</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -1184,6 +1189,14 @@ export function CapacityPlanningTool() {
                     <TableCell></TableCell>
                     <TableCell></TableCell>
                     <TableCell className="text-right">{totalWeeklyProductionTime.toFixed(1)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-blue-50">
+                    <TableCell>Total Time (Minutes/Year)</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right">{totalAnnualProductionTime.toLocaleString()}</TableCell>
                     <TableCell></TableCell>
                     <TableCell></TableCell>
                   </TableRow>
