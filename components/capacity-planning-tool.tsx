@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -62,54 +62,60 @@ export function CapacityPlanningTool() {
   const [developmentMix, setDevelopmentMix] = useState<string | null>("production-only")
 
   // Helper function to handle interdependent changes for development units
-  const handleDevUnitsChange = (machine: "e72" | "e35" | "e18", value: number | null) => {
-    const actualCap =
-      machine === "e72"
-        ? (actualE72StollCapacity ?? 0)
-        : machine === "e35"
-          ? (actualE35StollCapacity ?? 0)
-          : (actualE18SwgCapacity ?? 0)
+  const handleDevUnitsChange = useCallback(
+    (machine: "e72" | "e35" | "e18", value: number | null) => {
+      const actualCap =
+        machine === "e72"
+          ? (actualE72StollCapacity ?? 0)
+          : machine === "e35"
+            ? (actualE35StollCapacity ?? 0)
+            : (actualE18SwgCapacity ?? 0)
 
-    const newDevUnits = value ?? 0
-    const cappedDevUnits = Math.min(newDevUnits, actualCap)
-    const newProdUnits = Math.max(0, actualCap - cappedDevUnits)
+      const newDevUnits = value ?? 0
+      const cappedDevUnits = Math.min(newDevUnits, actualCap)
+      const newProdUnits = Math.max(0, actualCap - cappedDevUnits)
 
-    if (machine === "e72") {
-      setDevPayloadE72StollUnits(cappedDevUnits)
-      setProdPayloadE72StollUnits(newProdUnits)
-    } else if (machine === "e35") {
-      setDevPayloadE35StollUnits(cappedDevUnits)
-      setProdPayloadE35StollUnits(newProdUnits)
-    } else {
-      setDevPayloadE18SwgUnits(cappedDevUnits)
-      setProdPayloadE18SwgUnits(newProdUnits)
-    }
-  }
+      if (machine === "e72") {
+        setDevPayloadE72StollUnits(cappedDevUnits)
+        setProdPayloadE72StollUnits(newProdUnits)
+      } else if (machine === "e35") {
+        setDevPayloadE35StollUnits(cappedDevUnits)
+        setProdPayloadE35StollUnits(newProdUnits)
+      } else {
+        setDevPayloadE18SwgUnits(cappedDevUnits)
+        setProdPayloadE18SwgUnits(newProdUnits)
+      }
+    },
+    [actualE72StollCapacity, actualE35StollCapacity, actualE18SwgCapacity],
+  )
 
   // Helper function to handle interdependent changes for production units
-  const handleProdUnitsChange = (machine: "e72" | "e35" | "e18", value: number | null) => {
-    const actualCap =
-      machine === "e72"
-        ? (actualE72StollCapacity ?? 0)
-        : machine === "e35"
-          ? (actualE35StollCapacity ?? 0)
-          : (actualE18SwgCapacity ?? 0)
+  const handleProdUnitsChange = useCallback(
+    (machine: "e72" | "e35" | "e18", value: number | null) => {
+      const actualCap =
+        machine === "e72"
+          ? (actualE72StollCapacity ?? 0)
+          : machine === "e35"
+            ? (actualE35StollCapacity ?? 0)
+            : (actualE18SwgCapacity ?? 0)
 
-    const newProdUnits = value ?? 0
-    const cappedProdUnits = Math.min(newProdUnits, actualCap)
-    const newDevUnits = Math.max(0, actualCap - cappedProdUnits)
+      const newProdUnits = value ?? 0
+      const cappedProdUnits = Math.min(newProdUnits, actualCap)
+      const newDevUnits = Math.max(0, actualCap - cappedProdUnits)
 
-    if (machine === "e72") {
-      setProdPayloadE72StollUnits(cappedProdUnits)
-      setDevPayloadE72StollUnits(newDevUnits)
-    } else if (machine === "e35") {
-      setProdPayloadE35StollUnits(cappedProdUnits)
-      setDevPayloadE35StollUnits(newDevUnits)
-    } else {
-      setProdPayloadE18SwgUnits(cappedProdUnits)
-      setDevPayloadE18SwgUnits(newDevUnits)
-    }
-  }
+      if (machine === "e72") {
+        setProdPayloadE72StollUnits(cappedProdUnits)
+        setDevPayloadE72StollUnits(newDevUnits)
+      } else if (machine === "e35") {
+        setProdPayloadE35StollUnits(cappedProdUnits)
+        setDevPayloadE35StollUnits(newDevUnits)
+      } else {
+        setProdPayloadE18SwgUnits(cappedProdUnits)
+        setDevPayloadE18SwgUnits(newDevUnits)
+      }
+    },
+    [actualE72StollCapacity, actualE35StollCapacity, actualE18SwgCapacity],
+  )
 
   // Effect to update payload states when developmentMix changes
   useEffect(() => {
@@ -129,16 +135,18 @@ export function CapacityPlanningTool() {
       setDevPayloadE18SwgUnits(actualE18SwgCapacity)
     } else {
       // "production-and-development" - default to 0 dev, full prod, user can adjust
-      setDevPayloadE72StollUnits(0)
-      setDevPayloadE35StollUnits(0)
-      setDevPayloadE18SwgUnits(0)
-      setProdPayloadE72StollUnits(actualE72StollCapacity)
-      setProdPayloadE35StollUnits(actualE35StollCapacity)
-      setProdPayloadE18SwgUnits(actualE18SwgCapacity)
+      // This case is handled by the scenario buttons for specific splits
     }
   }, [developmentMix, actualE72StollCapacity, actualE35StollCapacity, actualE18SwgCapacity])
 
-  const handleResetToDefaults = () => {
+  const handleResetToDefaults = useCallback(() => {
+    setTargetAnnualRevenue(100000)
+    setNumStaff(5)
+    setDesiredWeeklySwatches(20)
+    setDesiredWeeklySamples(4)
+    setDesiredWeeklyGrading(2)
+    setAvgGarmentPrice(150)
+
     setLaborRatePerHour(30)
     setWorkHoursPerWeekPerPerson(40)
     setSwatchPrice(100)
@@ -166,29 +174,65 @@ export function CapacityPlanningTool() {
     setActualE18SwgCapacity(16)
 
     // Reset new editable fields based on current development mix
-    if (developmentMix === "production-only") {
-      setDevPayloadE72StollUnits(0)
-      setDevPayloadE35StollUnits(0)
-      setDevPayloadE18SwgUnits(0)
-      setProdPayloadE72StollUnits(24)
-      setProdPayloadE35StollUnits(10)
-      setProdPayloadE18SwgUnits(16)
-    } else if (developmentMix === "development-only") {
-      setProdPayloadE72StollUnits(0)
-      setProdPayloadE35StollUnits(0)
-      setProdPayloadE18SwgUnits(0)
-      setDevPayloadE72StollUnits(24)
-      setDevPayloadE35StollUnits(10)
-      setDevPayloadE18SwgUnits(16)
-    } else {
-      setDevPayloadE72StollUnits(0)
-      setDevPayloadE35StollUnits(0)
-      setDevPayloadE18SwgUnits(0)
-      setProdPayloadE72StollUnits(24)
-      setProdPayloadE35StollUnits(10)
-      setProdPayloadE18SwgUnits(16)
-    }
-  }
+    setDevelopmentMix("production-only") // Default to production-only on reset
+    setDevPayloadE72StollUnits(0)
+    setDevPayloadE35StollUnits(0)
+    setDevPayloadE18SwgUnits(0)
+    setProdPayloadE72StollUnits(24)
+    setProdPayloadE35StollUnits(10)
+    setProdPayloadE18SwgUnits(16)
+  }, [])
+
+  const applyScenarioDefaults = useCallback(
+    (scenario: "production-only" | "dev-worst-case" | "dev-best-case") => {
+      handleResetToDefaults() // Start from a clean slate of defaults
+
+      if (scenario === "production-only") {
+        setDevelopmentMix("production-only")
+        setDesiredWeeklySwatches(0)
+        setDesiredWeeklySamples(0)
+        setDesiredWeeklyGrading(0)
+        setDevPayloadE72StollUnits(0)
+        setDevPayloadE35StollUnits(0)
+        setDevPayloadE18SwgUnits(0)
+        setProdPayloadE72StollUnits(24)
+        setProdPayloadE35StollUnits(10)
+        setProdPayloadE18SwgUnits(16)
+        setSwatchPrice(100) // Default price
+        setSamplePrice(2000) // Default price
+        setGradingPrice(500) // Default price
+      } else if (scenario === "dev-worst-case") {
+        setDevelopmentMix("production-and-development")
+        setDesiredWeeklySwatches(14)
+        setDesiredWeeklySamples(6)
+        setDesiredWeeklyGrading(4)
+        setProdPayloadE72StollUnits(16) // Production units from spreadsheet
+        setProdPayloadE35StollUnits(2)
+        setProdPayloadE18SwgUnits(3)
+        setDevPayloadE72StollUnits(8) // Implied dev units (24-16)
+        setDevPayloadE35StollUnits(8) // Implied dev units (10-2)
+        setDevPayloadE18SwgUnits(13) // Implied dev units (16-3)
+        setSwatchPrice(250) // Spreadsheet price
+        setSamplePrice(2000) // Spreadsheet price
+        setGradingPrice(2500) // Spreadsheet price
+      } else if (scenario === "dev-best-case") {
+        setDevelopmentMix("development-only")
+        setDesiredWeeklySwatches(80)
+        setDesiredWeeklySamples(19)
+        setDesiredWeeklyGrading(18)
+        setProdPayloadE72StollUnits(0)
+        setProdPayloadE35StollUnits(0)
+        setProdPayloadE18SwgUnits(0)
+        setDevPayloadE72StollUnits(24) // Full capacity for dev
+        setDevPayloadE35StollUnits(10)
+        setDevPayloadE18SwgUnits(16)
+        setSwatchPrice(250) // Spreadsheet price
+        setSamplePrice(2000) // Spreadsheet price
+        setGradingPrice(2500) // Spreadsheet price
+      }
+    },
+    [handleResetToDefaults],
+  )
 
   const calculations = useMemo(() => {
     const currentNumStaff = numStaff ?? 5
@@ -242,7 +286,7 @@ export function CapacityPlanningTool() {
       (desiredWeeklyGrading ?? 0) * currentGradingPrice
 
     if (developmentMix === "production-only") {
-        developmentRevenueWeekly = 0
+      developmentRevenueWeekly = 0
     }
 
     const developmentRevenueAnnual = developmentRevenueWeekly * 52
@@ -281,9 +325,9 @@ export function CapacityPlanningTool() {
     const achievableProductionUnitsAnnual = Math.min(totalAnnualProductionUnits, achievableProductionUnitsAnnualByLabor)
 
     let productionRevenueAnnual = achievableProductionUnitsAnnual * currentAvgGarmentPrice
-    
+
     if (developmentMix === "development-only") {
-        productionRevenueAnnual = 0
+      productionRevenueAnnual = 0
     }
     const totalProjectedRevenue = productionRevenueAnnual + developmentRevenueAnnual
 
@@ -497,6 +541,16 @@ export function CapacityPlanningTool() {
                 disabled={isProductionOnly}
               />
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Scenario Selection Buttons */}
+          <h3 className="text-lg font-semibold mb-4">Load Scenarios</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button onClick={() => applyScenarioDefaults("production-only")}>Production Only</Button>
+            <Button onClick={() => applyScenarioDefaults("dev-worst-case")}>Dev Worst Case</Button>
+            <Button onClick={() => applyScenarioDefaults("dev-best-case")}>Dev Best Case</Button>
           </div>
 
           <Separator />
