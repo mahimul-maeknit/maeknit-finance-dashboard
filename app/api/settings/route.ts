@@ -33,10 +33,20 @@ type SavableSettings = {
   gradingPerWeek: number | null
 }
 
-const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "mattb@maeknit.io", "matt.blodgett@praxisvcge.com",
-  "naeem@maeknit.io", "kadri@maeknit.io", "financial_access@maeknit.io"
+const AUTHORIZED_EMAILS = [
+  "mahimul@maeknit.io",
+  "mallory@maeknit.io",
+  "elias@maeknit.io",
+  "tech@maeknit.io",
+  "intel@maeknit.io",
+  "mattb@maeknit.io",
+  "matt.blodgett@praxisvcge.com",
+  "naeem@maeknit.io",
+  "kadri@maeknit.io",
+  "financial_access@maeknit.io",
+  "daleT@maeknit.io",
+  "brendan@maeknit.io", 
 ]
-
 // GET handler to fetch settings
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: Request) {

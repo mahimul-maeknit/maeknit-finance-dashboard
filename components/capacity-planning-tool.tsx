@@ -967,6 +967,125 @@ export function CapacityPlanningTool() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle>{"Achievable Production Payload"}</CardTitle>
+              <CardDescription>Current setup for development items and their machine time usage.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Machine Type</TableHead>
+                    <TableHead className="text-right">Units/Day</TableHead>
+                    <TableHead className="text-right">Time per Unit (Minutes)</TableHead>
+                    <TableHead className="text-right">Total Time (Minutes/Day)</TableHead>
+                    <TableHead className="text-right">Units/Week</TableHead>
+                    <TableHead className="text-right">Units/Year</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>E7.2 STOLL</TableCell>
+                    <TableCell className="flex justify-end">
+                      <Input
+                        type="number"
+                        value={calculations.prodPayloadE72StollUnitsDisplay.toFixed(1)}
+                        disabled
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{PROD_KNITTING_TIME_E72}</TableCell>
+                    <TableCell className="text-right">{e72StollDailyTotalTime.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE72StollUnitsDisplay * 5).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE72StollUnitsDisplay * 5 * 52).toFixed(1)}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>E3.5,2 STOLL</TableCell>
+                    <TableCell className="flex justify-end">
+                      <Input
+                        type="number"
+                        value={calculations.prodPayloadE35StollUnitsDisplay.toFixed(1)}
+                        disabled
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{PROD_KNITTING_TIME_E35}</TableCell>
+                    <TableCell className="text-right">{e35StollDailyTotalTime.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE35StollUnitsDisplay * 5).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE35StollUnitsDisplay * 5 * 52).toFixed(1)}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>E18 SWG</TableCell>
+                    <TableCell className="flex justify-end">
+                      <Input
+                        type="number"
+                        value={calculations.prodPayloadE18SwgUnitsDisplay.toFixed(1)}
+                        disabled
+                        className="w-24 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">{PROD_KNITTING_TIME_E18}</TableCell>
+                    <TableCell className="text-right">{e18SwgDailyTotalTime.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE18SwgUnitsDisplay * 5).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(calculations.prodPayloadE18SwgUnitsDisplay * 5 * 52).toFixed(1)}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-gray-50">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-right">
+                      {(
+                        calculations.prodPayloadE72StollUnitsDisplay +
+                        calculations.prodPayloadE35StollUnitsDisplay +
+                        calculations.prodPayloadE18SwgUnitsDisplay
+                      ).toFixed(1)}
+                    </TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right">{totalDailyProductionTime.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{calculations.totalWeeklyProductionUnits.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {calculations.totalAnnualProductionUnits.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-blue-50">
+                    <TableCell>Total Time (Minutes/Day)</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right">{totalDailyProductionTime.toFixed(1)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-blue-50">
+                    <TableCell>Total Time (Minutes/Week)</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right">{totalWeeklyProductionTime.toFixed(1)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                  <TableRow className="font-bold bg-blue-50">
+                    <TableCell>Total Time (Minutes/Year)</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right">{totalAnnualProductionTime.toLocaleString()}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
           <Separator />
 
           <h3 className="text-lg font-semibold mb-4">Calculated Capacity & Revenue</h3>
@@ -1236,121 +1355,6 @@ export function CapacityPlanningTool() {
               </div>
 
               <Separator className="my-4" />
-
-              <h4 className="font-medium text-gray-700 mb-2">
-                {isProductionOnly ? "Production Payload (Daily)" : "Production Payload (Units/Day)"}
-              </h4>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Machine Type</TableHead>
-                    <TableHead className="text-right">Units/Day</TableHead>
-                    <TableHead className="text-right">Time per Unit (Minutes)</TableHead>
-                    <TableHead className="text-right">Total Time (Minutes/Day)</TableHead>
-                    <TableHead className="text-right">Units/Week</TableHead>
-                    <TableHead className="text-right">Units/Year</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell>E7.2 STOLL</TableCell>
-                    <TableCell className="flex justify-end">
-                      <Input
-                        type="number"
-                        value={calculations.prodPayloadE72StollUnitsDisplay.toFixed(1)}
-                        disabled
-                        className="w-24 text-right"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">{PROD_KNITTING_TIME_E72}</TableCell>
-                    <TableCell className="text-right">{e72StollDailyTotalTime.toFixed(1)}</TableCell>
-                    <TableCell className="text-right">
-                      {(calculations.prodPayloadE72StollUnitsDisplay * 5).toFixed(1)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {(calculations.prodPayloadE72StollUnitsDisplay * 5 * 52).toFixed(1)}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>E3.5,2 STOLL</TableCell>
-                    <TableCell className="flex justify-end">
-                      <Input
-                        type="number"
-                        value={calculations.prodPayloadE35StollUnitsDisplay.toFixed(1)}
-                        disabled
-                        className="w-24 text-right"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">{PROD_KNITTING_TIME_E35}</TableCell>
-                    <TableCell className="text-right">{e35StollDailyTotalTime.toFixed(1)}</TableCell>
-                    <TableCell className="text-right">
-                      {(calculations.prodPayloadE35StollUnitsDisplay * 5).toFixed(1)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {(calculations.prodPayloadE35StollUnitsDisplay * 5 * 52).toFixed(1)}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>E18 SWG</TableCell>
-                    <TableCell className="flex justify-end">
-                      <Input
-                        type="number"
-                        value={calculations.prodPayloadE18SwgUnitsDisplay.toFixed(1)}
-                        disabled
-                        className="w-24 text-right"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">{PROD_KNITTING_TIME_E18}</TableCell>
-                    <TableCell className="text-right">{e18SwgDailyTotalTime.toFixed(1)}</TableCell>
-                    <TableCell className="text-right">
-                      {(calculations.prodPayloadE18SwgUnitsDisplay * 5).toFixed(1)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {(calculations.prodPayloadE18SwgUnitsDisplay * 5 * 52).toFixed(1)}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="font-bold bg-gray-50">
-                    <TableCell>Total</TableCell>
-                    <TableCell className="text-right">
-                      {(
-                        calculations.prodPayloadE72StollUnitsDisplay +
-                        calculations.prodPayloadE35StollUnitsDisplay +
-                        calculations.prodPayloadE18SwgUnitsDisplay
-                      ).toFixed(1)}
-                    </TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-right">{totalDailyProductionTime.toFixed(1)}</TableCell>
-                    <TableCell className="text-right">{calculations.totalWeeklyProductionUnits.toFixed(1)}</TableCell>
-                    <TableCell className="text-right">
-                      {calculations.totalAnnualProductionUnits.toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="font-bold bg-blue-50">
-                    <TableCell>Total Time (Minutes/Day)</TableCell>
-                    <TableCell></TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-right">{totalDailyProductionTime.toFixed(1)}</TableCell>
-                    <TableCell></TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                  <TableRow className="font-bold bg-blue-50">
-                    <TableCell>Total Time (Minutes/Week)</TableCell>
-                    <TableCell></TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-right">{totalWeeklyProductionTime.toFixed(1)}</TableCell>
-                    <TableCell></TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                  <TableRow className="font-bold bg-blue-50">
-                    <TableCell>Total Time (Minutes/Year)</TableCell>
-                    <TableCell></TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-right">{totalAnnualProductionTime.toLocaleString()}</TableCell>
-                    <TableCell></TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
             </CardContent>
           </Card>
 

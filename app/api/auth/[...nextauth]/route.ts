@@ -13,7 +13,9 @@ const AUTHORIZED_EMAILS = [
   "matt.blodgett@praxisvcge.com",
   "naeem@maeknit.io",
   "kadri@maeknit.io",
-  "financial_access@maeknit.io" 
+  "financial_access@maeknit.io",
+  "daleT@maeknit.io",
+  "brendan@maeknit.io", 
 ]
 
 // Define a hardcoded guest user for demonstration purposes

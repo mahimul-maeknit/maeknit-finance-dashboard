@@ -57,8 +57,20 @@ const INITIAL_ACN_FIXED_RATES = {
 
 export function GarmentCostCalculator() {
   const { data: session, status } = useSession()
-  const AUTHORIZED_EMAILS = ["mahimul@maeknit.io", "mallory@maeknit.io", "elias@maeknit.io", "tech@maeknit.io", "intel@maeknit.io", "mattb@maeknit.io", "matt.blodgett@praxisvcge.com",
-    "naeem@maeknit.io", "kadri@maeknit.io", "financial_access@maeknit.io"
+  
+  const AUTHORIZED_EMAILS = [
+    "mahimul@maeknit.io",
+    "mallory@maeknit.io",
+    "elias@maeknit.io",
+    "tech@maeknit.io",
+    "intel@maeknit.io",
+    "mattb@maeknit.io",
+    "matt.blodgett@praxisvcge.com",
+    "naeem@maeknit.io",
+    "kadri@maeknit.io",
+    "financial_access@maeknit.io",
+    "daleT@maeknit.io",
+    "brendan@maeknit.io", 
   ]
 
   const [selectedGarment, setSelectedGarment] = useState<keyof typeof GARMENT_TYPES>("4x1 top")
