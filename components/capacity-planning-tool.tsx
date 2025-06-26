@@ -286,7 +286,7 @@ export function CapacityPlanningTool() {
     const totalAnnualProductionUnits = totalDailyProdUnits * 5 * 52
 
     let productionRevenueAnnual = totalAnnualProductionUnits * currentAvgGarmentPrice
-
+    const weeklyProductionRevenue = totalDailyProdUnits * currentAvgGarmentPrice * 5
     if (developmentMix === "development-only") {
       productionRevenueAnnual = 0
     }
@@ -349,6 +349,7 @@ export function CapacityPlanningTool() {
       revenueGap,
       hoursToReachTargetRevenue,
       totalWeeklyProductionUnits,
+      weeklyProductionRevenue,
       totalDailyProdUnits, // Added for total time calculation
       totalMonthlyProductionUnits: totalDailyProdUnits * (365 / 12),
       totalAnnualProductionUnits,
@@ -1089,6 +1090,22 @@ export function CapacityPlanningTool() {
           <Separator />
 
           <h3 className="text-lg font-semibold mb-4">Calculated Capacity & Revenue</h3>
+          <div className="space-y-2">
+              <Label>Development Mix</Label>
+              <Select
+                value={developmentMix ?? ""}
+                onValueChange={(value) => setDevelopmentMix(value === "" ? null : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="production-only">Production Only</SelectItem>
+                  <SelectItem value="development-only">Development Only</SelectItem>
+                  <SelectItem value="production-and-development">Production and Development</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card className="col-span-full">
               <CardHeader className="pb-2">
@@ -1096,7 +1113,7 @@ export function CapacityPlanningTool() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  ${calculations.totalProjectedRevenue.toLocaleString()}
+                  ${Math.floor(calculations.totalProjectedRevenue).toLocaleString()}
                 </div>
                 {targetAnnualRevenue !== null && (
                   <div
@@ -1126,14 +1143,14 @@ export function CapacityPlanningTool() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Achievable Annual Production Units</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-600">Achievable Production Units</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-purple-600">
-                  {calculations.achievableProductionUnitsAnnual.toLocaleString()} units
+                  Annual: {Math.floor(calculations.achievableProductionUnitsAnnual).toLocaleString()} units
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Annual Production Revenue: ${calculations.productionRevenueAnnual.toLocaleString()}
+                  Weekly: {Math.floor(calculations.totalWeeklyProductionUnits).toLocaleString()} units
                 </div>
               </CardContent>
             </Card>
@@ -1154,6 +1171,36 @@ export function CapacityPlanningTool() {
 
             <Card>
               <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Annual Production Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                ${Math.floor(calculations.productionRevenueAnnual).toLocaleString()}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Weekly: ${Math.floor(calculations.weeklyProductionRevenue).toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Achievable Annual Development Units</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-l font-bold text-purple-600">
+                  Swatches: {(desiredWeeklySwatches ?? 0) * 52} units
+                </div>
+                <div className="text-l font-bold text-purple-600">
+                  Samples: {(desiredWeeklySamples ?? 0) * 52} units
+                </div>
+                <div className="text-l font-bold text-purple-600">
+                  Grading: {(desiredWeeklyGrading ?? 0) * 52} units
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Weekly Expenses</CardTitle>
               </CardHeader>
               <CardContent>
@@ -1172,7 +1219,7 @@ export function CapacityPlanningTool() {
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${calculations.profit > 0 ? "text-green-600" : "text-red-600"}`}>
-                  ${calculations.profit.toLocaleString()}
+                  ${Math.floor(calculations.profit).toLocaleString()}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Margin: {calculations.profitMargin.toFixed(1)}%</div>
               </CardContent>
