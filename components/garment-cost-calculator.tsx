@@ -324,7 +324,7 @@ export function GarmentCostCalculator() {
     const acnTotalPriceWithDHL = acnTotalPriceBeforeDHL + acnRates.dhlShipCost
 
     const maeknitCostFromACN = acnTotalPriceWithDHL
-    const maeknitTariff = maeknitCostFromACN * acnRates.maeknitTariffPercent
+    const maeknitTariff = 0
     const maeknitCostAfterTariff = maeknitCostFromACN + maeknitTariff
 
     // Calculate MAEKNIT Total Price from ACN using the provided formula
@@ -685,20 +685,6 @@ export function GarmentCostCalculator() {
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="acn-tariff-percent">MAEKNIT Tariff (%)</Label>
-                  <Input
-                    id="acn-tariff-percent"
-                    type="number"
-                    step="0.01"
-                    value={(acnMaeknitTariffPercent ?? "") === "" ? "" : (acnMaeknitTariffPercent ?? 0) * 100}
-                    onChange={(e) =>
-                      setAcnMaeknitTariffPercent(
-                        e.target.value === "" ? null : Number.parseFloat(e.target.value) / 100 || 0,
-                      )
-                    }
-                  />
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -815,16 +801,6 @@ export function GarmentCostCalculator() {
                     <TableRow className="font-bold bg-gray-50">
                       <TableCell>MAEKNIT Cost (from ACN)</TableCell>
                       <TableCell className="text-right">${calculations.acn.maeknitCostFromACN.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>{(acnRates.maeknitTariffPercent * 100).toFixed(0)}% Tariff</TableCell>
-                      <TableCell className="text-right">${calculations.acn.maeknitTariff.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow className="font-bold bg-gray-50">
-                      <TableCell>MAEKNIT Cost (After Tariff)</TableCell>
-                      <TableCell className="text-right">
-                        ${calculations.acn.maeknitCostAfterTariff.toFixed(2)}
-                      </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>{calculations.acn.maeknitAcnMarginPercent.toFixed(0)}% MAEKNIT Margin</TableCell>
