@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { useSession } from "next-auth/react"
+import { Info } from "lucide-react"
 
 export type GarmentSavableSettings = {
   // Facility Settings
@@ -586,6 +587,7 @@ export function GarmentCostCalculator() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+
           {/* Facility Settings */}
           <Card>
             <CardHeader>
@@ -1018,8 +1020,15 @@ export function GarmentCostCalculator() {
           <Card>
             <CardHeader>
               <CardTitle>Comprehensive Cost Breakdown</CardTitle>
+              <CardDescription>Detailed breakdown showing formula application for each process</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              
+
+              <Separator className="my-6" />
+
+              {/* Quick Reference Table */}
+              <div className="text-sm text-muted-foreground mb-2">Quick Reference Table:</div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1102,6 +1111,167 @@ export function GarmentCostCalculator() {
           </Card>
         </CardContent>
       </Card>
+      {/* Knitting Cost Formula */}
+      <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
+                <h4 className="font-semibold mb-2">Knitting Cost Calculation:</h4>
+                <div className="text-sm font-mono space-y-1 text-muted-foreground">
+                  <div>
+                    Labor: ${knittingLaborRate ?? 0}/hr × {calculations.knitting.timeHr.toFixed(2)}hr = $
+                    {calculations.knitting.labor.toFixed(2)}
+                  </div>
+                  <div>
+                    Electricity: ${knittingElectricityCost ?? 0}/hr × {calculations.knitting.timeHr.toFixed(2)}hr = $
+                    {calculations.knitting.electricity.toFixed(2)}
+                  </div>
+                  <div>
+                    Depreciation: ${knittingDepreciationPerHour ?? 0}/hr × {calculations.knitting.timeHr.toFixed(2)}hr =
+                    ${calculations.knitting.depreciation.toFixed(2)}
+                  </div>
+                  <div>
+                    Rent: ${calculations.rentPerHour.toFixed(2)}/hr ÷ {knittingMachineCount ?? 1} machines ×{" "}
+                    {calculations.knitting.timeHr.toFixed(2)}hr = ${calculations.knitting.rent.toFixed(2)}
+                  </div>
+                  <Separator className="my-2" />
+                  <div className="font-bold text-foreground">Total: ${calculations.knitting.total.toFixed(2)}</div>
+                </div>
+              </div>
+
+              {/* Linking Cost Formula */}
+              <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
+                <h4 className="font-semibold mb-2">Linking Cost Calculation:</h4>
+                <div className="text-sm font-mono space-y-1 text-muted-foreground">
+                  <div>
+                    Labor: ${linkingLaborRate ?? 0}/hr × {calculations.linking.timeHr.toFixed(2)}hr = $
+                    {calculations.linking.labor.toFixed(2)}
+                  </div>
+                  <div>
+                    Electricity: ${linkingElectricityCost ?? 0}/hr × {calculations.linking.timeHr.toFixed(2)}hr = $
+                    {calculations.linking.electricity.toFixed(2)}
+                  </div>
+                  <div>
+                    Depreciation: ${linkingDepreciationPerHour ?? 0}/hr × {calculations.linking.timeHr.toFixed(2)}hr = $
+                    {calculations.linking.depreciation.toFixed(2)}
+                  </div>
+                  <div>
+                    Rent: ${calculations.rentPerHour.toFixed(2)}/hr ÷ {linkingMachineCount ?? 1} machines ×{" "}
+                    {calculations.linking.timeHr.toFixed(2)}hr = ${calculations.linking.rent.toFixed(2)}
+                  </div>
+                  <Separator className="my-2" />
+                  <div className="font-bold text-foreground">Total: ${calculations.linking.total.toFixed(2)}</div>
+                </div>
+              </div>
+
+              {/* Washing/Steaming Cost Formula */}
+              <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
+                <h4 className="font-semibold mb-2">Washing/Steaming Cost Calculation:</h4>
+                <div className="text-sm font-mono space-y-1 text-muted-foreground">
+                  <div>
+                    Labor: ${washingLaborRate ?? 0}/hr × {calculations.washing.timeHr.toFixed(2)}hr = $
+                    {calculations.washing.labor.toFixed(2)}
+                  </div>
+                  <div>
+                    Washing Electricity: ${washingElectricityCost ?? 0}/hr × {calculations.washing.timeHr.toFixed(2)}hr
+                    = ${calculations.washing.electricity.toFixed(2)}
+                  </div>
+                  <div>
+                    Steaming Electricity: ${steamingElectricityCost ?? 0}/hr × {calculations.washing.timeHr.toFixed(2)}
+                    hr = ${calculations.washing.steamingElectricity.toFixed(2)}
+                  </div>
+                  <div>
+                    Washing Depreciation: ${washingDepreciationPerHour ?? 0}/hr ×{" "}
+                    {calculations.washing.timeHr.toFixed(2)}hr = ${calculations.washing.depreciation.toFixed(2)}
+                  </div>
+                  <div>
+                    Steaming Depreciation: ${steamingDepreciationPerHour ?? 0}/hr ×{" "}
+                    {calculations.washing.timeHr.toFixed(2)}hr = ${calculations.washing.steamingDepreciation.toFixed(2)}
+                  </div>
+                  <div>
+                    Rent: ${calculations.rentPerHour.toFixed(2)}/hr ÷ {washingMachineCount ?? 1} machines ×{" "}
+                    {calculations.washing.timeHr.toFixed(2)}hr = ${calculations.washing.rent.toFixed(2)}
+                  </div>
+                  <Separator className="my-2" />
+                  <div className="font-bold text-foreground">Total: ${calculations.washing.total.toFixed(2)}</div>
+                </div>
+              </div>
+
+              {/* QC Cost Formula */}
+              <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
+                <h4 className="font-semibold mb-2">QC + Hand Finish Cost Calculation:</h4>
+                <div className="text-sm font-mono space-y-1 text-muted-foreground">
+                  <div>
+                    Labor: ${qcHandFinishLaborRate ?? 0}/hr × {calculations.qc.timeHr.toFixed(2)}hr = $
+                    {calculations.qc.labor.toFixed(2)}
+                  </div>
+                  <div className="text-xs italic">(No machine costs - labor only)</div>
+                  <Separator className="my-2" />
+                  <div className="font-bold text-foreground">Total: ${calculations.qc.total.toFixed(2)}</div>
+                </div>
+              </div>
+
+              {/* Material Cost Formula */}
+              <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
+                <h4 className="font-semibold mb-2">Material Cost Calculation:</h4>
+                <div className="text-sm font-mono space-y-1 text-muted-foreground">
+                  <div>
+                    Yarn: {((customGarmentWeight ?? standardGarmentWeightGrams ?? 0) / 1000).toFixed(3)}kg × $
+                    {yarnCostPerKg ?? 0}/kg = ${calculations.material.yarn.toFixed(2)}
+                  </div>
+                  <Separator className="my-2" />
+                  <div className="font-bold text-foreground">Total: ${calculations.material.total.toFixed(2)}</div>
+                </div>
+              </div>
+
+              {/* Final Pricing Calculation */}
+              <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border-2 border-green-200 dark:border-green-800">
+                <h4 className="font-semibold mb-2 text-green-900 dark:text-green-100">Final Pricing Calculation:</h4>
+                <div className="text-sm font-mono space-y-1 text-muted-foreground">
+                  <div>
+                    Total Cost: ${calculations.knitting.total.toFixed(2)} + ${calculations.linking.total.toFixed(2)} + $
+                    {calculations.washing.total.toFixed(2)} + ${calculations.qc.total.toFixed(2)} + $
+                    {calculations.material.total.toFixed(2)} = ${calculations.totalCost.toFixed(2)}
+                  </div>
+                  <div>
+                    Margin: ${calculations.totalCost.toFixed(2)} ÷ (1 - {(marginPercent ?? 0) / 100}) - $
+                    {calculations.totalCost.toFixed(2)} = ${calculations.marginAmount.toFixed(2)}
+                  </div>
+                  <Separator className="my-2" />
+                  <div className="font-bold text-xl text-green-700 dark:text-green-300">
+                    Selling Price: ${calculations.sellingPrice.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+                <Info className="h-5 w-5" />
+                Cost Calculation Formula
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="font-mono bg-white dark:bg-slate-950 p-3 rounded border">
+                <div className="font-semibold mb-2">Per Process Cost:</div>
+                <div className="text-blue-600 dark:text-blue-400">
+                  (Labor Rate × Time) + (Time × Electricity) + (Time × Depreciation) + (Time × Rent Allocation)
+                </div>
+              </div>
+              <div className="font-mono bg-white dark:bg-slate-950 p-3 rounded border">
+                <div className="font-semibold mb-2">Rent Allocation:</div>
+                <div className="text-blue-600 dark:text-blue-400">
+                  Rent Per Hour = Monthly Rent ÷ Working Hours/Month
+                  <br />
+                  Rent Per Machine = Rent Per Hour ÷ Number of Machines
+                </div>
+              </div>
+              <div className="font-mono bg-white dark:bg-slate-950 p-3 rounded border">
+                <div className="font-semibold mb-2">Total Cost & Pricing:</div>
+                <div className="text-blue-600 dark:text-blue-400">
+                  Total Cost = Knitting + Linking + Washing/Steaming + QC/Hand Finish + Materials
+                  <br />
+                  Selling Price = Total Cost ÷ (1 - Margin%)
+                </div>
+              </div>
+            </CardContent>
+          </Card>
     </div>
   )
 }
