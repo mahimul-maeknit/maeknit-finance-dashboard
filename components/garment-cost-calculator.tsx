@@ -1,170 +1,472 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import type React from "react"
+
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button" // Import Button
-import { useSession } from "next-auth/react" // Import useSession
+import { Button } from "@/components/ui/button"
+import { useSession } from "next-auth/react"
 
 export type GarmentSavableSettings = {
-    usaMarginInput: number | null
-    acnFactoryMarginInput: number | null
-    maeknitAcnMarginInput: number | null
-    usaKnittingCostPerHour: number | null
-    usaLinkingCostPerHour: number | null
-    usaQCHandFinishPerHour: number | null
-    usaWashingSteamingPerHour: number | null
-    usaLaborRatePerHour: number | null
-    acnKnittingCostPerHour: number | null
-    acnLinkingCostPerHour: number | null
-    acnQCHandFinishPerHour: number | null
-    acnWashingSteamingPerHour: number | null
-    acnDHLShipCost: number | null
-    acnMaeknitTariffPercent: number | null
-  }
-  
+  // Facility Settings
+  monthlyRent: number | null
+  totalMachines: number | null
+  workingHoursPerMonth: number | null
 
-// Define garment types and their base metrics
-const GARMENT_TYPES = {
-  "4x1 top": { machineTime: 90, linkingTime: 60, yarnCostPerKg: 25, garmentWeightGrams: 600 },
-  boucle: { machineTime: 110, linkingTime: 60, yarnCostPerKg: 38, garmentWeightGrams: 600 },
-  "cable crewneck": { machineTime: 60, linkingTime: 60, yarnCostPerKg: 25, garmentWeightGrams: 600 },
-  "vintage cardigan": { machineTime: 110, linkingTime: 90, yarnCostPerKg: 25, garmentWeightGrams: 460 },
-} as const // Use 'as const' for type safety
+  // Machine-specific settings
+  knittingMachineCount: number | null
+  linkingMachineCount: number | null
+  washingMachineCount: number | null
 
-// Define initial fixed rates for USA (MAEKNIT)
-const INITIAL_USA_FIXED_RATES = {
-  knittingCostPerHour: 0.52,
-  linkingCostPerHour: 0.55,
-  qcHandFinishPerHour: 4,
-  washingSteamingPerHour: 5.5,
-  laborRatePerHour: 30, // "1 hour 30" from spreadsheet
+  knittingDepreciationPerHour: number | null
+  linkingDepreciationPerHour: number | null
+  washingDepreciationPerHour: number | null
+  steamingDepreciationPerHour: number | null
+
+  // Electricity rates (per hour)
+  knittingElectricityCost: number | null
+  linkingElectricityCost: number | null
+  washingElectricityCost: number | null
+  steamingElectricityCost: number | null
+
+  // Labor rates (per hour)
+  knittingLaborRate: number | null
+  linkingLaborRate: number | null
+  washingLaborRate: number | null
+  qcHandFinishLaborRate: number | null
+
+  // Standard times (in minutes)
+  standardKnittingTime: number | null
+  standardLinkingTime: number | null
+  standardWashingTime: number | null
+  standardQCTime: number | null
+
+  // Material costs
+  yarnCostPerKg: number | null
+  standardGarmentWeightGrams: number | null
+
+  // Margin
+  marginPercent: number | null
 }
 
-// Define initial fixed rates for Turkey (ACN)
-const INITIAL_ACN_FIXED_RATES = {
-  knittingCostPerHour: 0.1,
-  linkingCostPerHour: 0.22,
-  qcHandFinishPerHour: 2,
-  washingSteamingPerHour: 2.5,
-  dhlShipCost: 5,
-  maeknitTariffPercent: 0.15, // Estimated 15% tariff
+const INITIAL_SETTINGS = {
+  monthlyRent: 7000,
+  totalMachines: 10,
+  workingHoursPerMonth: 160, // 8 hours × 20 working days
+
+  knittingMachineCount: 4,
+  linkingMachineCount: 3,
+  washingMachineCount: 2,
+
+  knittingDepreciationPerHour: 5,
+  linkingDepreciationPerHour: 4,
+  washingDepreciationPerHour: 6,
+  steamingDepreciationPerHour: 3,
+
+  knittingElectricityCost: 0.74, // $0.74 per hour per the spreadsheet
+  linkingElectricityCost: 0.48,
+  washingElectricityCost: 2.56,
+  steamingElectricityCost: 0.7,
+
+  knittingLaborRate: 30,
+  linkingLaborRate: 30,
+  washingLaborRate: 30,
+  qcHandFinishLaborRate: 30,
+
+  standardKnittingTime: 90, // minutes
+  standardLinkingTime: 60,
+  standardWashingTime: 30,
+  standardQCTime: 20,
+
+  yarnCostPerKg: 25,
+  standardGarmentWeightGrams: 600,
+
+  marginPercent: 50,
 }
 
 export function GarmentCostCalculator() {
   const { data: session, status } = useSession()
-  
-  const AUTHORIZED_EMAILS = [
-    "mahimul@maeknit.io",
-    "mallory@maeknit.io",
-    "elias@maeknit.io",
-    "tech@maeknit.io",
-    "intel@maeknit.io",
-    "mattb@maeknit.io",
-    "matt.blodgett@praxisvcge.com",
-    "naeem@maeknit.io",
-    "kadri@maeknit.io",
-    "financial_access@maeknit.io",
-    "daleT@maeknit.io",
-    "brendan@maeknit.io", 
-  ]
 
-  const [selectedGarment, setSelectedGarment] = useState<keyof typeof GARMENT_TYPES>("4x1 top")
-  const [customMachineTime, setCustomMachineTime] = useState<number | null>(null)
+  // Facility Settings
+  const [monthlyRent, setMonthlyRent] = useState<number | null>(INITIAL_SETTINGS.monthlyRent)
+  const [totalMachines, setTotalMachines] = useState<number | null>(INITIAL_SETTINGS.totalMachines)
+  const [workingHoursPerMonth, setWorkingHoursPerMonth] = useState<number | null>(INITIAL_SETTINGS.workingHoursPerMonth)
+
+  // Machine counts
+  const [knittingMachineCount, setKnittingMachineCount] = useState<number | null>(INITIAL_SETTINGS.knittingMachineCount)
+  const [linkingMachineCount, setLinkingMachineCount] = useState<number | null>(INITIAL_SETTINGS.linkingMachineCount)
+  const [washingMachineCount, setWashingMachineCount] = useState<number | null>(INITIAL_SETTINGS.washingMachineCount)
+
+  const [knittingDepreciationPerHour, setKnittingDepreciationPerHour] = useState<number | null>(
+    INITIAL_SETTINGS.knittingDepreciationPerHour,
+  )
+  const [linkingDepreciationPerHour, setLinkingDepreciationPerHour] = useState<number | null>(
+    INITIAL_SETTINGS.linkingDepreciationPerHour,
+  )
+  const [washingDepreciationPerHour, setWashingDepreciationPerHour] = useState<number | null>(
+    INITIAL_SETTINGS.washingDepreciationPerHour,
+  )
+  const [steamingDepreciationPerHour, setSteamingDepreciationPerHour] = useState<number | null>(
+    INITIAL_SETTINGS.steamingDepreciationPerHour,
+  )
+
+  // Electricity costs
+  const [knittingElectricityCost, setKnittingElectricityCost] = useState<number | null>(
+    INITIAL_SETTINGS.knittingElectricityCost,
+  )
+  const [linkingElectricityCost, setLinkingElectricityCost] = useState<number | null>(
+    INITIAL_SETTINGS.linkingElectricityCost,
+  )
+  const [washingElectricityCost, setWashingElectricityCost] = useState<number | null>(
+    INITIAL_SETTINGS.washingElectricityCost,
+  )
+  const [steamingElectricityCost, setSteamingElectricityCost] = useState<number | null>(
+    INITIAL_SETTINGS.steamingElectricityCost,
+  )
+
+  // Labor rates
+  const [knittingLaborRate, setKnittingLaborRate] = useState<number | null>(INITIAL_SETTINGS.knittingLaborRate)
+  const [linkingLaborRate, setLinkingLaborRate] = useState<number | null>(INITIAL_SETTINGS.linkingLaborRate)
+  const [washingLaborRate, setWashingLaborRate] = useState<number | null>(INITIAL_SETTINGS.washingLaborRate)
+  const [qcHandFinishLaborRate, setQcHandFinishLaborRate] = useState<number | null>(
+    INITIAL_SETTINGS.qcHandFinishLaborRate,
+  )
+
+  // Standard times
+  const [standardKnittingTime, setStandardKnittingTime] = useState<number | null>(INITIAL_SETTINGS.standardKnittingTime)
+  const [standardLinkingTime, setStandardLinkingTime] = useState<number | null>(INITIAL_SETTINGS.standardLinkingTime)
+  const [standardWashingTime, setStandardWashingTime] = useState<number | null>(INITIAL_SETTINGS.standardWashingTime)
+  const [standardQCTime, setStandardQCTime] = useState<number | null>(INITIAL_SETTINGS.standardQCTime)
+
+  // Material costs
+  const [yarnCostPerKg, setYarnCostPerKg] = useState<number | null>(INITIAL_SETTINGS.yarnCostPerKg)
+  const [standardGarmentWeightGrams, setStandardGarmentWeightGrams] = useState<number | null>(
+    INITIAL_SETTINGS.standardGarmentWeightGrams,
+  )
+
+  // Margin
+  const [marginPercent, setMarginPercent] = useState<number | null>(INITIAL_SETTINGS.marginPercent)
+
+  // Custom inputs for specific garment
+  const [customKnittingTime, setCustomKnittingTime] = useState<number | null>(null)
   const [customLinkingTime, setCustomLinkingTime] = useState<number | null>(null)
-  const [customYarnCostPerKg, setCustomYarnCostPerKg] = useState<number | null>(null)
-  const [customGarmentWeightGrams, setCustomGarmentWeightGrams] = useState<number | null>(null)
-
-  // State for margin percentages
-  const [usaMarginInput, setUsaMarginInput] = useState<number | null>(50) // Default to 50% as per spreadsheet
-  const [acnFactoryMarginInput, setAcnFactoryMarginInput] = useState<number | null>(30) // Default to 30%
-  const [maeknitAcnMarginInput, setMaeknitAcnMarginInput] = useState<number | null>(33) // Default to 33% as per spreadsheet
-
-  // State for USA fixed rates
-  const [usaKnittingCostPerHour, setUsaKnittingCostPerHour] = useState<number | null>(
-    INITIAL_USA_FIXED_RATES.knittingCostPerHour,
-  )
-  const [usaLinkingCostPerHour, setUsaLinkingCostPerHour] = useState<number | null>(
-    INITIAL_USA_FIXED_RATES.linkingCostPerHour,
-  )
-  const [usaQCHandFinishPerHour, setUsaQCHandFinishPerHour] = useState<number | null>(
-    INITIAL_USA_FIXED_RATES.qcHandFinishPerHour,
-  )
-  const [usaWashingSteamingPerHour, setUsaWashingSteamingPerHour] = useState<number | null>(
-    INITIAL_USA_FIXED_RATES.washingSteamingPerHour,
-  )
-  const [usaLaborRatePerHour, setUsaLaborRatePerHour] = useState<number | null>(
-    INITIAL_USA_FIXED_RATES.laborRatePerHour,
-  )
-
-  // State for ACN fixed rates
-  const [acnKnittingCostPerHour, setAcnKnittingCostPerHour] = useState<number | null>(
-    INITIAL_ACN_FIXED_RATES.knittingCostPerHour,
-  )
-  const [acnLinkingCostPerHour, setAcnLinkingCostPerHour] = useState<number | null>(
-    INITIAL_ACN_FIXED_RATES.linkingCostPerHour,
-  )
-  const [acnQCHandFinishPerHour, setAcnQCHandFinishPerHour] = useState<number | null>(
-    INITIAL_ACN_FIXED_RATES.qcHandFinishPerHour,
-  )
-  const [acnWashingSteamingPerHour, setAcnWashingSteamingPerHour] = useState<number | null>(
-    INITIAL_ACN_FIXED_RATES.washingSteamingPerHour,
-  )
-  const [acnDHLShipCost, setAcnDHLShipCost] = useState<number | null>(INITIAL_ACN_FIXED_RATES.dhlShipCost)
-  const [acnMaeknitTariffPercent, setAcnMaeknitTariffPercent] = useState<number | null>(
-    INITIAL_ACN_FIXED_RATES.maeknitTariffPercent,
-  )
+  const [customWashingTime, setCustomWashingTime] = useState<number | null>(null)
+  const [customQCTime, setCustomQCTime] = useState<number | null>(null)
+  const [customYarnCost, setCustomYarnCost] = useState<number | null>(null)
+  const [customGarmentWeight, setCustomGarmentWeight] = useState<number | null>(null)
 
   const [isSaving, setIsSaving] = useState(false)
-  const [isLoading, setIsLoading] = useState(true) // New loading state
+  const [isLoading, setIsLoading] = useState(true)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const currentGarment = GARMENT_TYPES[selectedGarment]
-
-  // Function to reset all settings to their initial default values
-  const handleResetToDefaults = () => {
-    setUsaMarginInput(50)
-    setAcnFactoryMarginInput(30)
-    setMaeknitAcnMarginInput(33)
-    setUsaKnittingCostPerHour(INITIAL_USA_FIXED_RATES.knittingCostPerHour)
-    setUsaLinkingCostPerHour(INITIAL_USA_FIXED_RATES.linkingCostPerHour)
-    setUsaQCHandFinishPerHour(INITIAL_USA_FIXED_RATES.qcHandFinishPerHour)
-    setUsaWashingSteamingPerHour(INITIAL_USA_FIXED_RATES.washingSteamingPerHour)
-    setUsaLaborRatePerHour(INITIAL_USA_FIXED_RATES.laborRatePerHour)
-    setAcnKnittingCostPerHour(INITIAL_ACN_FIXED_RATES.knittingCostPerHour)
-    setAcnLinkingCostPerHour(INITIAL_ACN_FIXED_RATES.linkingCostPerHour)
-    setAcnQCHandFinishPerHour(INITIAL_ACN_FIXED_RATES.qcHandFinishPerHour)
-    setAcnWashingSteamingPerHour(INITIAL_ACN_FIXED_RATES.washingSteamingPerHour)
-    setAcnDHLShipCost(INITIAL_ACN_FIXED_RATES.dhlShipCost)
-    setAcnMaeknitTariffPercent(INITIAL_ACN_FIXED_RATES.maeknitTariffPercent)
-    setCustomMachineTime(null)
-    setCustomLinkingTime(null)
-    setCustomYarnCostPerKg(null)
-    setCustomGarmentWeightGrams(null)
-    console.log("Garment Cost Calculator settings reset to defaults.")
+  const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+    e.currentTarget.blur()
   }
 
-  // Function to save settings to the database
+  const calculations = useMemo(() => {
+    // Use custom values or defaults
+    const knittingTimeMin = customKnittingTime ?? standardKnittingTime ?? 0
+    const linkingTimeMin = customLinkingTime ?? standardLinkingTime ?? 0
+    const washingTimeMin = customWashingTime ?? standardWashingTime ?? 0
+    const qcTimeMin = customQCTime ?? standardQCTime ?? 0
+    const yarnCost = customYarnCost ?? yarnCostPerKg ?? 0
+    const garmentWeightGrams = customGarmentWeight ?? standardGarmentWeightGrams ?? 0
+
+    // Convert to hours
+    const knittingTimeHr = knittingTimeMin / 60
+    const linkingTimeHr = linkingTimeMin / 60
+    const washingTimeHr = washingTimeMin / 60
+    const qcTimeHr = qcTimeMin / 60
+
+    // Calculate rent per machine per hour
+    const rentPerHour = (monthlyRent ?? 0) / (workingHoursPerMonth ?? 1)
+    const rentPerKnittingMachine = (knittingMachineCount ?? 0) > 0 ? rentPerHour / (knittingMachineCount ?? 1) : 0
+    const rentPerLinkingMachine = (linkingMachineCount ?? 0) > 0 ? rentPerHour / (linkingMachineCount ?? 1) : 0
+    const rentPerWashingMachine = (washingMachineCount ?? 0) > 0 ? rentPerHour / (washingMachineCount ?? 1) : 0
+
+    // KNITTING COST = (Labor × time) + (time × electricity) + (time × depreciation) + (time × rent)
+    const knittingLabor = knittingTimeHr * (knittingLaborRate ?? 0)
+    const knittingElectricity = knittingTimeHr * (knittingElectricityCost ?? 0)
+    const knittingDepreciation = knittingTimeHr * (knittingDepreciationPerHour ?? 0)
+    const knittingRent = knittingTimeHr * rentPerKnittingMachine
+    const knittingTotalCost = knittingLabor + knittingElectricity + knittingDepreciation + knittingRent
+
+    // LINKING COST
+    const linkingLabor = linkingTimeHr * (linkingLaborRate ?? 0)
+    const linkingElectricity = linkingTimeHr * (linkingElectricityCost ?? 0)
+    const linkingDepreciation = linkingTimeHr * (linkingDepreciationPerHour ?? 0)
+    const linkingRent = linkingTimeHr * rentPerLinkingMachine
+    const linkingTotalCost = linkingLabor + linkingElectricity + linkingDepreciation + linkingRent
+
+    // WASHING/STEAMING COST
+    const washingLabor = washingTimeHr * (washingLaborRate ?? 0)
+    const washingElectricity = washingTimeHr * (washingElectricityCost ?? 0)
+    const washingDepreciation = washingTimeHr * (washingDepreciationPerHour ?? 0)
+    const washingRent = washingTimeHr * rentPerWashingMachine
+    const steamingElectricity = washingTimeHr * (steamingElectricityCost ?? 0) // Steaming happens after washing
+    const steamingDepreciation = washingTimeHr * (steamingDepreciationPerHour ?? 0)
+    const washingTotalCost =
+      washingLabor + washingElectricity + washingDepreciation + washingRent + steamingElectricity + steamingDepreciation
+
+    // QC + HAND FINISH COST (no machine, just labor)
+    const qcLabor = qcTimeHr * (qcHandFinishLaborRate ?? 0)
+    const qcTotalCost = qcLabor
+
+    // MATERIAL COST (Yarn)
+    const materialCost = (garmentWeightGrams / 1000) * yarnCost
+
+    // TOTAL COST
+    const totalCost = knittingTotalCost + linkingTotalCost + washingTotalCost + qcTotalCost + materialCost
+
+    // MARGIN & PRICE
+    const marginDecimal = (marginPercent ?? 0) / 100
+    const sellingPrice = marginDecimal < 1 ? totalCost / (1 - marginDecimal) : totalCost
+    const marginAmount = sellingPrice - totalCost
+
+    return {
+      knitting: {
+        labor: knittingLabor,
+        electricity: knittingElectricity,
+        depreciation: knittingDepreciation,
+        rent: knittingRent,
+        total: knittingTotalCost,
+        timeHr: knittingTimeHr,
+      },
+      linking: {
+        labor: linkingLabor,
+        electricity: linkingElectricity,
+        depreciation: linkingDepreciation,
+        rent: linkingRent,
+        total: linkingTotalCost,
+        timeHr: linkingTimeHr,
+      },
+      washing: {
+        labor: washingLabor,
+        electricity: washingElectricity,
+        steamingElectricity: steamingElectricity,
+        depreciation: washingDepreciation,
+        steamingDepreciation: steamingDepreciation,
+        rent: washingRent,
+        total: washingTotalCost,
+        timeHr: washingTimeHr,
+      },
+      qc: {
+        labor: qcLabor,
+        total: qcTotalCost,
+        timeHr: qcTimeHr,
+      },
+      material: {
+        yarn: materialCost,
+        total: materialCost,
+      },
+      totalCost,
+      marginAmount,
+      sellingPrice,
+      rentPerHour,
+    }
+  }, [
+    customKnittingTime,
+    customLinkingTime,
+    customWashingTime,
+    customQCTime,
+    customYarnCost,
+    customGarmentWeight,
+    standardKnittingTime,
+    standardLinkingTime,
+    standardWashingTime,
+    standardQCTime,
+    yarnCostPerKg,
+    standardGarmentWeightGrams,
+    monthlyRent,
+    workingHoursPerMonth,
+    knittingMachineCount,
+    linkingMachineCount,
+    washingMachineCount,
+    knittingDepreciationPerHour,
+    linkingDepreciationPerHour,
+    washingDepreciationPerHour,
+    steamingDepreciationPerHour,
+    knittingElectricityCost,
+    linkingElectricityCost,
+    washingElectricityCost,
+    steamingElectricityCost,
+    knittingLaborRate,
+    linkingLaborRate,
+    washingLaborRate,
+    qcHandFinishLaborRate,
+    marginPercent,
+  ])
+
+  const handleResetToDefaults = () => {
+    setMonthlyRent(INITIAL_SETTINGS.monthlyRent)
+    setTotalMachines(INITIAL_SETTINGS.totalMachines)
+    setWorkingHoursPerMonth(INITIAL_SETTINGS.workingHoursPerMonth)
+    setKnittingMachineCount(INITIAL_SETTINGS.knittingMachineCount)
+    setLinkingMachineCount(INITIAL_SETTINGS.linkingMachineCount)
+    setWashingMachineCount(INITIAL_SETTINGS.washingMachineCount)
+    setKnittingDepreciationPerHour(INITIAL_SETTINGS.knittingDepreciationPerHour)
+    setLinkingDepreciationPerHour(INITIAL_SETTINGS.linkingDepreciationPerHour)
+    setWashingDepreciationPerHour(INITIAL_SETTINGS.washingDepreciationPerHour)
+    setSteamingDepreciationPerHour(INITIAL_SETTINGS.steamingDepreciationPerHour)
+    setKnittingElectricityCost(INITIAL_SETTINGS.knittingElectricityCost)
+    setLinkingElectricityCost(INITIAL_SETTINGS.linkingElectricityCost)
+    setWashingElectricityCost(INITIAL_SETTINGS.washingElectricityCost)
+    setSteamingElectricityCost(INITIAL_SETTINGS.steamingElectricityCost)
+    setKnittingLaborRate(INITIAL_SETTINGS.knittingLaborRate)
+    setLinkingLaborRate(INITIAL_SETTINGS.linkingLaborRate)
+    setWashingLaborRate(INITIAL_SETTINGS.washingLaborRate)
+    setQcHandFinishLaborRate(INITIAL_SETTINGS.qcHandFinishLaborRate)
+    setStandardKnittingTime(INITIAL_SETTINGS.standardKnittingTime)
+    setStandardLinkingTime(INITIAL_SETTINGS.standardLinkingTime)
+    setStandardWashingTime(INITIAL_SETTINGS.standardWashingTime)
+    setStandardQCTime(INITIAL_SETTINGS.standardQCTime)
+    setYarnCostPerKg(INITIAL_SETTINGS.yarnCostPerKg)
+    setStandardGarmentWeightGrams(INITIAL_SETTINGS.standardGarmentWeightGrams)
+    setMarginPercent(INITIAL_SETTINGS.marginPercent)
+    setCustomKnittingTime(null)
+    setCustomLinkingTime(null)
+    setCustomWashingTime(null)
+    setCustomQCTime(null)
+    setCustomYarnCost(null)
+    setCustomGarmentWeight(null)
+  }
+
+  const autoSaveSettings = useCallback(async () => {
+    if (status !== "authenticated") return
+
+    const settingsToSave: GarmentSavableSettings = {
+      monthlyRent,
+      totalMachines,
+      workingHoursPerMonth,
+      knittingMachineCount,
+      linkingMachineCount,
+      washingMachineCount,
+      knittingDepreciationPerHour,
+      linkingDepreciationPerHour,
+      washingDepreciationPerHour,
+      steamingDepreciationPerHour,
+      knittingElectricityCost,
+      linkingElectricityCost,
+      washingElectricityCost,
+      steamingElectricityCost,
+      knittingLaborRate,
+      linkingLaborRate,
+      washingLaborRate,
+      qcHandFinishLaborRate,
+      standardKnittingTime,
+      standardLinkingTime,
+      standardWashingTime,
+      standardQCTime,
+      yarnCostPerKg,
+      standardGarmentWeightGrams,
+      marginPercent,
+    }
+
+    try {
+      setAutoSaveStatus("saving")
+      const response = await fetch("/api/garment-calculator-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(settingsToSave),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to auto-save settings")
+      }
+
+      setAutoSaveStatus("saved")
+      setTimeout(() => setAutoSaveStatus("idle"), 2000)
+    } catch (error: unknown) {
+      console.error("Error auto-saving settings:", error)
+      setAutoSaveStatus("idle")
+    }
+  }, [
+    monthlyRent,
+    totalMachines,
+    workingHoursPerMonth,
+    knittingMachineCount,
+    linkingMachineCount,
+    washingMachineCount,
+    knittingDepreciationPerHour,
+    linkingDepreciationPerHour,
+    washingDepreciationPerHour,
+    steamingDepreciationPerHour,
+    knittingElectricityCost,
+    linkingElectricityCost,
+    washingElectricityCost,
+    steamingElectricityCost,
+    knittingLaborRate,
+    linkingLaborRate,
+    washingLaborRate,
+    qcHandFinishLaborRate,
+    standardKnittingTime,
+    standardLinkingTime,
+    standardWashingTime,
+    standardQCTime,
+    yarnCostPerKg,
+    standardGarmentWeightGrams,
+    marginPercent,
+    status,
+  ])
+
+  useEffect(() => {
+    if (isLoading) return // Don't auto-save during initial load
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveSettings()
+    }, 1000)
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+      }
+    }
+  }, [autoSaveSettings, isLoading])
+
   const handleSaveSettings = async () => {
     setIsSaving(true)
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+    }
+
     const settingsToSave: GarmentSavableSettings = {
-      usaMarginInput,
-      acnFactoryMarginInput,
-      maeknitAcnMarginInput,
-      usaKnittingCostPerHour,
-      usaLinkingCostPerHour,
-      usaQCHandFinishPerHour,
-      usaWashingSteamingPerHour,
-      usaLaborRatePerHour,
-      acnKnittingCostPerHour,
-      acnLinkingCostPerHour,
-      acnQCHandFinishPerHour,
-      acnWashingSteamingPerHour,
-      acnDHLShipCost,
-      acnMaeknitTariffPercent,
+      monthlyRent,
+      totalMachines,
+      workingHoursPerMonth,
+      knittingMachineCount,
+      linkingMachineCount,
+      washingMachineCount,
+      knittingDepreciationPerHour,
+      linkingDepreciationPerHour,
+      washingDepreciationPerHour,
+      steamingDepreciationPerHour,
+      knittingElectricityCost,
+      linkingElectricityCost,
+      washingElectricityCost,
+      steamingElectricityCost,
+      knittingLaborRate,
+      linkingLaborRate,
+      washingLaborRate,
+      qcHandFinishLaborRate,
+      standardKnittingTime,
+      standardLinkingTime,
+      standardWashingTime,
+      standardQCTime,
+      yarnCostPerKg,
+      standardGarmentWeightGrams,
+      marginPercent,
     }
 
     try {
@@ -181,229 +483,85 @@ export function GarmentCostCalculator() {
         throw new Error(errorData.error || "Failed to save garment calculator settings")
       }
 
-      console.log("Garment Cost Calculator Settings Saved!", "Your settings have been successfully updated.")
+      console.log("Settings saved successfully")
+      setAutoSaveStatus("saved")
+      setTimeout(() => setAutoSaveStatus("idle"), 2000)
     } catch (error: unknown) {
-      let errorMessage = "There was an issue saving your settings. Please try again."
-      if (error instanceof Error) {
-        errorMessage = error.message
-      } else if (
-        typeof error === "object" &&
-        error !== null &&
-        "error" in error &&
-        typeof (error as { error: string }).error === "string"
-      ) {
-        errorMessage = (error as { error: string }).error
-      }
-      console.error("Error Saving Garment Cost Calculator Settings", errorMessage)
+      console.error("Error saving settings:", error)
     } finally {
       setIsSaving(false)
     }
   }
 
-  // Fetch settings on component mount if authorized
   useEffect(() => {
     const fetchSettings = async () => {
-      if (status === "authenticated" && AUTHORIZED_EMAILS.includes(session?.user?.email || "")) {
+      if (status === "authenticated") {
         try {
           const response = await fetch("/api/garment-calculator-settings")
-          if (!response.ok) {
-            throw new Error("Failed to fetch garment calculator settings")
-          }
-          const fetchedSettings: GarmentSavableSettings = await response.json()
-
-          // Update state with fetched settings if they exist
-          if (Object.keys(fetchedSettings).length > 0) {
-            setUsaMarginInput(fetchedSettings.usaMarginInput ?? 50)
-            setAcnFactoryMarginInput(fetchedSettings.acnFactoryMarginInput ?? 30)
-            setMaeknitAcnMarginInput(fetchedSettings.maeknitAcnMarginInput ?? 33)
-            setUsaKnittingCostPerHour(
-              fetchedSettings.usaKnittingCostPerHour ?? INITIAL_USA_FIXED_RATES.knittingCostPerHour,
-            )
-            setUsaLinkingCostPerHour(
-              fetchedSettings.usaLinkingCostPerHour ?? INITIAL_USA_FIXED_RATES.linkingCostPerHour,
-            )
-            setUsaQCHandFinishPerHour(
-              fetchedSettings.usaQCHandFinishPerHour ?? INITIAL_USA_FIXED_RATES.qcHandFinishPerHour,
-            )
-            setUsaWashingSteamingPerHour(
-              fetchedSettings.usaWashingSteamingPerHour ?? INITIAL_USA_FIXED_RATES.washingSteamingPerHour,
-            )
-            setUsaLaborRatePerHour(fetchedSettings.usaLaborRatePerHour ?? INITIAL_USA_FIXED_RATES.laborRatePerHour)
-            setAcnKnittingCostPerHour(
-              fetchedSettings.acnKnittingCostPerHour ?? INITIAL_ACN_FIXED_RATES.knittingCostPerHour,
-            )
-            setAcnLinkingCostPerHour(
-              fetchedSettings.acnLinkingCostPerHour ?? INITIAL_ACN_FIXED_RATES.linkingCostPerHour,
-            )
-            setAcnQCHandFinishPerHour(
-              fetchedSettings.acnQCHandFinishPerHour ?? INITIAL_ACN_FIXED_RATES.qcHandFinishPerHour,
-            )
-            setAcnWashingSteamingPerHour(
-              fetchedSettings.acnWashingSteamingPerHour ?? INITIAL_ACN_FIXED_RATES.washingSteamingPerHour,
-            )
-            setAcnDHLShipCost(fetchedSettings.acnDHLShipCost ?? INITIAL_ACN_FIXED_RATES.dhlShipCost)
-            setAcnMaeknitTariffPercent(
-              fetchedSettings.acnMaeknitTariffPercent ?? INITIAL_ACN_FIXED_RATES.maeknitTariffPercent,
-            )
-            console.log("Garment Cost Calculator Settings Loaded!", "Previous settings have been loaded.")
+          if (response.ok) {
+            const fetchedSettings: GarmentSavableSettings = await response.json()
+            if (Object.keys(fetchedSettings).length > 0) {
+              setMonthlyRent(fetchedSettings.monthlyRent ?? INITIAL_SETTINGS.monthlyRent)
+              setTotalMachines(fetchedSettings.totalMachines ?? INITIAL_SETTINGS.totalMachines)
+              setWorkingHoursPerMonth(fetchedSettings.workingHoursPerMonth ?? INITIAL_SETTINGS.workingHoursPerMonth)
+              setKnittingMachineCount(fetchedSettings.knittingMachineCount ?? INITIAL_SETTINGS.knittingMachineCount)
+              setLinkingMachineCount(fetchedSettings.linkingMachineCount ?? INITIAL_SETTINGS.linkingMachineCount)
+              setWashingMachineCount(fetchedSettings.washingMachineCount ?? INITIAL_SETTINGS.washingMachineCount)
+              setKnittingDepreciationPerHour(
+                fetchedSettings.knittingDepreciationPerHour ?? INITIAL_SETTINGS.knittingDepreciationPerHour,
+              )
+              setLinkingDepreciationPerHour(
+                fetchedSettings.linkingDepreciationPerHour ?? INITIAL_SETTINGS.linkingDepreciationPerHour,
+              )
+              setWashingDepreciationPerHour(
+                fetchedSettings.washingDepreciationPerHour ?? INITIAL_SETTINGS.washingDepreciationPerHour,
+              )
+              setSteamingDepreciationPerHour(
+                fetchedSettings.steamingDepreciationPerHour ?? INITIAL_SETTINGS.steamingDepreciationPerHour,
+              )
+              setKnittingElectricityCost(
+                fetchedSettings.knittingElectricityCost ?? INITIAL_SETTINGS.knittingElectricityCost,
+              )
+              setLinkingElectricityCost(
+                fetchedSettings.linkingElectricityCost ?? INITIAL_SETTINGS.linkingElectricityCost,
+              )
+              setWashingElectricityCost(
+                fetchedSettings.washingElectricityCost ?? INITIAL_SETTINGS.washingElectricityCost,
+              )
+              setSteamingElectricityCost(
+                fetchedSettings.steamingElectricityCost ?? INITIAL_SETTINGS.steamingElectricityCost,
+              )
+              setKnittingLaborRate(fetchedSettings.knittingLaborRate ?? INITIAL_SETTINGS.knittingLaborRate)
+              setLinkingLaborRate(fetchedSettings.linkingLaborRate ?? INITIAL_SETTINGS.linkingLaborRate)
+              setWashingLaborRate(fetchedSettings.washingLaborRate ?? INITIAL_SETTINGS.washingLaborRate)
+              setQcHandFinishLaborRate(fetchedSettings.qcHandFinishLaborRate ?? INITIAL_SETTINGS.qcHandFinishLaborRate)
+              setStandardKnittingTime(fetchedSettings.standardKnittingTime ?? INITIAL_SETTINGS.standardKnittingTime)
+              setStandardLinkingTime(fetchedSettings.standardLinkingTime ?? INITIAL_SETTINGS.standardLinkingTime)
+              setStandardWashingTime(fetchedSettings.standardWashingTime ?? INITIAL_SETTINGS.standardWashingTime)
+              setStandardQCTime(fetchedSettings.standardQCTime ?? INITIAL_SETTINGS.standardQCTime)
+              setYarnCostPerKg(fetchedSettings.yarnCostPerKg ?? INITIAL_SETTINGS.yarnCostPerKg)
+              setStandardGarmentWeightGrams(
+                fetchedSettings.standardGarmentWeightGrams ?? INITIAL_SETTINGS.standardGarmentWeightGrams,
+              )
+              setMarginPercent(fetchedSettings.marginPercent ?? INITIAL_SETTINGS.marginPercent)
+            }
           }
         } catch (error) {
-          console.error("Error fetching garment calculator settings:", error)
-          console.error(
-            "Error Loading Garment Cost Calculator Settings",
-            "Could not load previous settings. Using default values.",
-          )
+          console.error("Error fetching settings:", error)
         } finally {
           setIsLoading(false)
         }
       } else if (status !== "loading") {
-        setIsLoading(false) // If not authenticated or authorized, stop loading and use defaults
+        setIsLoading(false)
       }
     }
     fetchSettings()
   }, [session, status])
 
-  // UseMemo to calculate costs based on selected garment and custom inputs
-  const calculations = useMemo(() => {
-    const machineTime = customMachineTime ?? currentGarment.machineTime
-    const linkingTime = customLinkingTime ?? currentGarment.linkingTime
-    const yarnCostPerKg = customYarnCostPerKg ?? currentGarment.yarnCostPerKg
-    const garmentWeightGrams = customGarmentWeightGrams ?? currentGarment.garmentWeightGrams
-    const garmentWeightKg = garmentWeightGrams / 1000
-
-    // Convert margin inputs to decimal percentages
-    const usaMarginPercent = (usaMarginInput ?? 0) / 100
-    const acnFactoryMarginPercent = (acnFactoryMarginInput ?? 0) / 100
-    const maeknitAcnMarginPercent = (maeknitAcnMarginInput ?? 0) / 100
-
-    // Use current state values for fixed rates, defaulting to 0 if null
-    const usaRates = {
-      knittingCostPerHour: usaKnittingCostPerHour ?? 0,
-      linkingCostPerHour: usaLinkingCostPerHour ?? 0,
-      qcHandFinishPerHour: usaQCHandFinishPerHour ?? 0,
-      washingSteamingPerHour: usaWashingSteamingPerHour ?? 0,
-      laborRatePerHour: usaLaborRatePerHour ?? 0,
-    }
-
-    const acnRates = {
-      knittingCostPerHour: acnKnittingCostPerHour ?? 0,
-      linkingCostPerHour: acnLinkingCostPerHour ?? 0,
-      qcHandFinishPerHour: acnQCHandFinishPerHour ?? 0,
-      washingSteamingPerHour: acnWashingSteamingPerHour ?? 0,
-      dhlShipCost: acnDHLShipCost ?? 0,
-      maeknitTariffPercent: acnMaeknitTariffPercent ?? 0,
-    }
-
-    // --- MAEKNIT (USA) Calculations ---
-    const usaYarnCost = yarnCostPerKg * garmentWeightKg
-    const usaMachineTimeCost = (machineTime / 60) * usaRates.knittingCostPerHour * usaRates.laborRatePerHour
-    const usaLinkingTimeCost = (linkingTime / 60) * usaRates.linkingCostPerHour * usaRates.laborRatePerHour
-    const usaWashingCost = usaRates.washingSteamingPerHour
-    const usaQCHandFinishCost = usaRates.qcHandFinishPerHour
-
-    const usaTotalCost = usaYarnCost + usaMachineTimeCost + usaLinkingTimeCost + usaWashingCost + usaQCHandFinishCost
-
-    // Calculate USA Total Price using the provided formula: Selling Price = Cost / (1 - Margin)
-    const usaTotalPrice = usaMarginPercent < 1 ? usaTotalCost / (1 - usaMarginPercent) : usaTotalCost // Avoid division by zero or negative
-    const usaMargin = usaTotalPrice - usaTotalCost
-
-    // --- ACN (Turkey) Calculations ---
-    const acnMachineTimeCost = machineTime * acnRates.knittingCostPerHour
-    const acnLinkingTimeCost = linkingTime * acnRates.linkingCostPerHour
-    const acnYarnCost = yarnCostPerKg * garmentWeightKg // Yarn cost is the same regardless of factory
-    const acnWashingCost = acnRates.washingSteamingPerHour
-    const acnQCHandFinishCost = acnRates.qcHandFinishPerHour
-
-    const acnDirectCost = acnMachineTimeCost + acnLinkingTimeCost + acnYarnCost + acnWashingCost + acnQCHandFinishCost
-
-    // Calculate ACN Total Price Before DHL using the provided formula
-    const acnTotalPriceBeforeDHL =
-      acnFactoryMarginPercent < 1 ? acnDirectCost / (1 - acnFactoryMarginPercent) : acnDirectCost
-    const acnMargin = acnTotalPriceBeforeDHL - acnDirectCost
-
-    const acnTotalPriceWithDHL = acnTotalPriceBeforeDHL + acnRates.dhlShipCost
-
-    const maeknitCostFromACN = acnTotalPriceWithDHL
-    const maeknitTariff = 0
-    const maeknitCostAfterTariff = maeknitCostFromACN + maeknitTariff
-
-    // Calculate MAEKNIT Total Price from ACN using the provided formula
-    const maeknitTotalPriceFromACN =
-      maeknitAcnMarginPercent < 1 ? maeknitCostAfterTariff / (1 - maeknitAcnMarginPercent) : maeknitCostAfterTariff
-    const maeknitMarginFromACN = maeknitTotalPriceFromACN - maeknitCostAfterTariff
-
-    return {
-      usa: {
-        yarnCost: usaYarnCost,
-        machineTimeCost: usaMachineTimeCost,
-        linkingTimeCost: usaLinkingTimeCost,
-        washingCost: usaWashingCost,
-        qcHandFinishCost: usaQCHandFinishCost,
-        totalCost: usaTotalCost,
-        margin: usaMargin,
-        totalPrice: usaTotalPrice,
-        // Calculate margin percentage based on total price
-        marginPercent: usaTotalPrice !== 0 ? (usaMargin / usaTotalPrice) * 100 : 0,
-      },
-      acn: {
-        machineTimeCost: acnMachineTimeCost,
-        linkingTimeCost: acnLinkingTimeCost,
-        yarnCost: acnYarnCost,
-        washingCost: acnWashingCost,
-        qcHandFinishCost: acnQCHandFinishCost,
-        directCost: acnDirectCost,
-        margin: acnMargin,
-        totalPriceBeforeDHL: acnTotalPriceBeforeDHL,
-        totalPriceWithDHL: acnTotalPriceWithDHL,
-        maeknitCostFromACN: maeknitCostFromACN,
-        maeknitTariff: maeknitTariff,
-        maeknitCostAfterTariff: maeknitCostAfterTariff,
-        maeknitMarginFromACN: maeknitMarginFromACN,
-        maeknitTotalPriceFromACN: maeknitTotalPriceFromACN,
-        // Calculate margin percentages based on total prices
-        acnFactoryMarginPercent: acnTotalPriceBeforeDHL !== 0 ? (acnMargin / acnTotalPriceBeforeDHL) * 100 : 0,
-        maeknitAcnMarginPercent:
-          maeknitTotalPriceFromACN !== 0 ? (maeknitMarginFromACN / maeknitTotalPriceFromACN) * 100 : 0,
-      },
-      currentInputs: {
-        machineTime,
-        linkingTime,
-        yarnCostPerKg,
-        garmentWeightGrams,
-      },
-      usaRates, // Include usaRates in the returned object
-      acnRates, // Include acnRates in the returned object
-    }
-  }, [
-    selectedGarment,
-    customMachineTime,
-    customLinkingTime,
-    customYarnCostPerKg,
-    customGarmentWeightGrams,
-    currentGarment,
-    usaMarginInput,
-    acnFactoryMarginInput,
-    maeknitAcnMarginInput,
-    usaKnittingCostPerHour,
-    usaLinkingCostPerHour,
-    usaQCHandFinishPerHour,
-    usaWashingSteamingPerHour,
-    usaLaborRatePerHour,
-    acnKnittingCostPerHour,
-    acnLinkingCostPerHour,
-    acnQCHandFinishPerHour,
-    acnWashingSteamingPerHour,
-    acnDHLShipCost,
-    acnMaeknitTariffPercent,
-  ])
-
-  // Destructure usaRates and acnRates from calculations
-  const { acnRates } = calculations
-
   if (isLoading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center bg-gray-50">
-        <p className="text-lg text-gray-600">Loading garment calculator settings...</p>
+      <div className="flex min-h-[300px] items-center justify-center">
+        <p className="text-lg text-muted-foreground">Loading calculator settings...</p>
       </div>
     )
   }
@@ -412,134 +570,353 @@ export function GarmentCostCalculator() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Garment Cost Calculator</CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Garment Cost Calculator</CardTitle>
+              <CardDescription>
+                Calculate comprehensive garment costs including labor, electricity, depreciation, and rent allocation
+              </CardDescription>
+            </div>
+            {autoSaveStatus !== "idle" && (
+              <div className="text-sm text-muted-foreground">
+                {autoSaveStatus === "saving" && "Saving..."}
+                {autoSaveStatus === "saved" && "✓ Auto-saved"}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="garment-type">Select Garment Type</Label>
-              <Select
-                value={selectedGarment}
-                onValueChange={(value: keyof typeof GARMENT_TYPES) => {
-                  setSelectedGarment(value)
-                  // Clear custom inputs when changing garment type
-                  setCustomMachineTime(null)
-                  setCustomLinkingTime(null)
-                  setCustomYarnCostPerKg(null)
-                  setCustomGarmentWeightGrams(null)
-                }}
-              >
-                <SelectTrigger id="garment-type">
-                  <SelectValue placeholder="Select a garment type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(GARMENT_TYPES).map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <Separator />
-
-          <h3 className="text-lg font-semibold mb-4">Custom Garment Inputs (Optional)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="custom-machine-time">Machine Time (min)</Label>
-              <Input
-                id="custom-machine-time"
-                type="number"
-                value={customMachineTime ?? ""}
-                placeholder={currentGarment.machineTime.toString()}
-                onChange={(e) =>
-                  setCustomMachineTime(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="custom-linking-time">Linking Time (min)</Label>
-              <Input
-                id="custom-linking-time"
-                type="number"
-                value={customLinkingTime ?? ""}
-                placeholder={currentGarment.linkingTime.toString()}
-                onChange={(e) =>
-                  setCustomLinkingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="custom-yarn-cost">Yarn Cost Per KG ($)</Label>
-              <Input
-                id="custom-yarn-cost"
-                type="number"
-                step="0.01"
-                value={customYarnCostPerKg ?? ""}
-                placeholder={currentGarment.yarnCostPerKg.toString()}
-                onChange={(e) =>
-                  setCustomYarnCostPerKg(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="custom-garment-weight">Garment Weight (grams)</Label>
-              <Input
-                id="custom-garment-weight"
-                type="number"
-                value={customGarmentWeightGrams ?? ""}
-                placeholder={currentGarment.garmentWeightGrams.toString()}
-                onChange={(e) =>
-                  setCustomGarmentWeightGrams(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                }
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Margin Settings */}
+          {/* Facility Settings */}
           <Card>
             <CardHeader>
-              <CardTitle>Margin Settings (%)</CardTitle>
+              <CardTitle>Facility Settings</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="usa-margin">MAEKNIT (USA) Margin</Label>
+                <Label>Monthly Rent ($)</Label>
                 <Input
-                  id="usa-margin"
                   type="number"
-                  step="1"
-                  value={usaMarginInput ?? ""}
-                  onChange={(e) =>
-                    setUsaMarginInput(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                  }
+                  value={monthlyRent ?? ""}
+                  onChange={(e) => setMonthlyRent(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
+                  onWheel={handleWheel}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="acn-factory-margin">ACN Factory Margin</Label>
+                <Label>Working Hours/Month</Label>
                 <Input
-                  id="acn-factory-margin"
                   type="number"
-                  step="1"
-                  value={acnFactoryMarginInput ?? ""}
+                  value={workingHoursPerMonth ?? ""}
                   onChange={(e) =>
-                    setAcnFactoryMarginInput(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
+                    setWorkingHoursPerMonth(e.target.value === "" ? null : Number.parseFloat(e.target.value))
                   }
+                  onWheel={handleWheel}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="maeknit-acn-margin">MAEKNIT Margin (from ACN)</Label>
+                <Label>Rent Per Hour</Label>
+                <Input type="text" value={`$${calculations.rentPerHour.toFixed(2)}`} disabled className="bg-muted" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Machine Settings & Depreciation */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Machine Settings & Depreciation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Knitting Machines</Label>
+                  <Input
+                    type="number"
+                    value={knittingMachineCount ?? ""}
+                    onChange={(e) =>
+                      setKnittingMachineCount(e.target.value === "" ? null : Number.parseInt(e.target.value))
+                    }
+                    onWheel={handleWheel}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Linking Machines</Label>
+                  <Input
+                    type="number"
+                    value={linkingMachineCount ?? ""}
+                    onChange={(e) =>
+                      setLinkingMachineCount(e.target.value === "" ? null : Number.parseInt(e.target.value))
+                    }
+                    onWheel={handleWheel}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Washing Machines</Label>
+                  <Input
+                    type="number"
+                    value={washingMachineCount ?? ""}
+                    onChange={(e) =>
+                      setWashingMachineCount(e.target.value === "" ? null : Number.parseInt(e.target.value))
+                    }
+                    onWheel={handleWheel}
+                  />
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label className="text-base font-semibold">Depreciation per Machine ($/hour)</Label>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-normal">Knitting</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={knittingDepreciationPerHour ?? ""}
+                      onChange={(e) =>
+                        setKnittingDepreciationPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                      }
+                      onWheel={handleWheel}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-normal">Linking</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={linkingDepreciationPerHour ?? ""}
+                      onChange={(e) =>
+                        setLinkingDepreciationPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                      }
+                      onWheel={handleWheel}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-normal">Washing</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={washingDepreciationPerHour ?? ""}
+                      onChange={(e) =>
+                        setWashingDepreciationPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                      }
+                      onWheel={handleWheel}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-normal">Steaming</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={steamingDepreciationPerHour ?? ""}
+                      onChange={(e) =>
+                        setSteamingDepreciationPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                      }
+                      onWheel={handleWheel}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Electricity Costs */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Electricity Costs ($/hour)</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Knitting</Label>
                 <Input
-                  id="maeknit-acn-margin"
+                  type="number"
+                  step="0.01"
+                  value={knittingElectricityCost ?? ""}
+                  onChange={(e) =>
+                    setKnittingElectricityCost(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Linking</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={linkingElectricityCost ?? ""}
+                  onChange={(e) =>
+                    setLinkingElectricityCost(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Washing</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={washingElectricityCost ?? ""}
+                  onChange={(e) =>
+                    setWashingElectricityCost(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Steaming</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={steamingElectricityCost ?? ""}
+                  onChange={(e) =>
+                    setSteamingElectricityCost(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Labor Rates */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Labor Rates ($/hour)</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Knitting</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={knittingLaborRate ?? ""}
+                  onChange={(e) =>
+                    setKnittingLaborRate(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Linking</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={linkingLaborRate ?? ""}
+                  onChange={(e) =>
+                    setLinkingLaborRate(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Washing</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={washingLaborRate ?? ""}
+                  onChange={(e) =>
+                    setWashingLaborRate(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>QC + Hand Finish</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={qcHandFinishLaborRate ?? ""}
+                  onChange={(e) =>
+                    setQcHandFinishLaborRate(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Standard Times & Materials */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Standard Times (minutes) & Materials</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="space-y-2">
+                <Label>Knitting Time</Label>
+                <Input
+                  type="number"
+                  value={standardKnittingTime ?? ""}
+                  onChange={(e) =>
+                    setStandardKnittingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Linking Time</Label>
+                <Input
+                  type="number"
+                  value={standardLinkingTime ?? ""}
+                  onChange={(e) =>
+                    setStandardLinkingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Washing Time</Label>
+                <Input
+                  type="number"
+                  value={standardWashingTime ?? ""}
+                  onChange={(e) =>
+                    setStandardWashingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>QC Time</Label>
+                <Input
+                  type="number"
+                  value={standardQCTime ?? ""}
+                  onChange={(e) => setStandardQCTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Yarn Cost ($/kg)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={yarnCostPerKg ?? ""}
+                  onChange={(e) => setYarnCostPerKg(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Weight (grams)</Label>
+                <Input
+                  type="number"
+                  value={standardGarmentWeightGrams ?? ""}
+                  onChange={(e) =>
+                    setStandardGarmentWeightGrams(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Margin */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Margin</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Margin (%)</Label>
+                <Input
                   type="number"
                   step="1"
-                  value={maeknitAcnMarginInput ?? ""}
-                  onChange={(e) =>
-                    setMaeknitAcnMarginInput(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                  }
+                  value={marginPercent ?? ""}
+                  onChange={(e) => setMarginPercent(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
+                  onWheel={handleWheel}
                 />
               </div>
             </CardContent>
@@ -547,144 +924,81 @@ export function GarmentCostCalculator() {
 
           <Separator />
 
-          {/* Fixed Rates Settings */}
+          {/* Custom Garment Inputs */}
           <Card>
             <CardHeader>
-              <CardTitle>Fixed Rates Settings</CardTitle>
+              <CardTitle>Custom Garment Inputs (Optional)</CardTitle>
+              <CardDescription>Override standard values for a specific garment calculation</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <h4 className="font-medium text-gray-700">MAEKNIT (USA) Rates</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="usa-knitting-cost">Knitting Cost ($/hr)</Label>
-                  <Input
-                    id="usa-knitting-cost"
-                    type="number"
-                    step="0.01"
-                    value={usaKnittingCostPerHour ?? ""}
-                    onChange={(e) =>
-                      setUsaKnittingCostPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="usa-linking-cost">Linking Cost ($/hr)</Label>
-                  <Input
-                    id="usa-linking-cost"
-                    type="number"
-                    step="0.01"
-                    value={usaLinkingCostPerHour ?? ""}
-                    onChange={(e) =>
-                      setUsaLinkingCostPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="usa-qc-cost">QC Hand Finish ($/hr)</Label>
-                  <Input
-                    id="usa-qc-cost"
-                    type="number"
-                    step="0.01"
-                    value={usaQCHandFinishPerHour ?? ""}
-                    onChange={(e) =>
-                      setUsaQCHandFinishPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="usa-washing-cost">Washing/Steaming ($/hr)</Label>
-                  <Input
-                    id="usa-washing-cost"
-                    type="number"
-                    step="0.01"
-                    value={usaWashingSteamingPerHour ?? ""}
-                    onChange={(e) =>
-                      setUsaWashingSteamingPerHour(
-                        e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0,
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="usa-labor-rate">Labor Rate ($/hr)</Label>
-                  <Input
-                    id="usa-labor-rate"
-                    type="number"
-                    step="0.01"
-                    value={usaLaborRatePerHour ?? ""}
-                    onChange={(e) =>
-                      setUsaLaborRatePerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="space-y-2">
+                <Label>Knitting Time (min)</Label>
+                <Input
+                  type="number"
+                  value={customKnittingTime ?? ""}
+                  placeholder={standardKnittingTime?.toString()}
+                  onChange={(e) =>
+                    setCustomKnittingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
               </div>
-
-              <Separator />
-
-              <h4 className="font-medium text-gray-700">ACN (Turkey) Rates</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="acn-knitting-cost">Knitting Cost ($/min)</Label>
-                  <Input
-                    id="acn-knitting-cost"
-                    type="number"
-                    step="0.01"
-                    value={acnKnittingCostPerHour ?? ""}
-                    onChange={(e) =>
-                      setAcnKnittingCostPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="acn-linking-cost">Linking Cost ($/min)</Label>
-                  <Input
-                    id="acn-linking-cost"
-                    type="number"
-                    step="0.01"
-                    value={acnLinkingCostPerHour ?? ""}
-                    onChange={(e) =>
-                      setAcnLinkingCostPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="acn-qc-cost">QC Hand Finish ($/hr)</Label>
-                  <Input
-                    id="acn-qc-cost"
-                    type="number"
-                    step="0.01"
-                    value={acnQCHandFinishPerHour ?? ""}
-                    onChange={(e) =>
-                      setAcnQCHandFinishPerHour(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="acn-washing-cost">Washing/Steaming ($/hr)</Label>
-                  <Input
-                    id="acn-washing-cost"
-                    type="number"
-                    step="0.01"
-                    value={acnWashingSteamingPerHour ?? ""}
-                    onChange={(e) =>
-                      setAcnWashingSteamingPerHour(
-                        e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0,
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="acn-dhl-ship-cost">DHL Shipping ($)</Label>
-                  <Input
-                    id="acn-dhl-ship-cost"
-                    type="number"
-                    step="0.01"
-                    value={acnDHLShipCost ?? ""}
-                    onChange={(e) =>
-                      setAcnDHLShipCost(e.target.value === "" ? null : Number.parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Linking Time (min)</Label>
+                <Input
+                  type="number"
+                  value={customLinkingTime ?? ""}
+                  placeholder={standardLinkingTime?.toString()}
+                  onChange={(e) =>
+                    setCustomLinkingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Washing Time (min)</Label>
+                <Input
+                  type="number"
+                  value={customWashingTime ?? ""}
+                  placeholder={standardWashingTime?.toString()}
+                  onChange={(e) =>
+                    setCustomWashingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>QC Time (min)</Label>
+                <Input
+                  type="number"
+                  value={customQCTime ?? ""}
+                  placeholder={standardQCTime?.toString()}
+                  onChange={(e) => setCustomQCTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Yarn Cost ($/kg)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={customYarnCost ?? ""}
+                  placeholder={yarnCostPerKg?.toString()}
+                  onChange={(e) => setCustomYarnCost(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Weight (grams)</Label>
+                <Input
+                  type="number"
+                  value={customGarmentWeight ?? ""}
+                  placeholder={standardGarmentWeightGrams?.toString()}
+                  onChange={(e) =>
+                    setCustomGarmentWeight(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
               </div>
             </CardContent>
           </Card>
@@ -700,123 +1014,92 @@ export function GarmentCostCalculator() {
 
           <Separator />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* MAEKNIT (USA) Costs */}
-            <Card>
-              <CardHeader>
-                <CardTitle>MAEKNIT (USA) Cost Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cost Item</TableHead>
-                      <TableHead className="text-right">Amount ($)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>Yarn Cost</TableCell>
-                      <TableCell className="text-right">${calculations.usa.yarnCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Machine Time Cost</TableCell>
-                      <TableCell className="text-right">${calculations.usa.machineTimeCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Linking Time Cost</TableCell>
-                      <TableCell className="text-right">${calculations.usa.linkingTimeCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Washing/Steaming</TableCell>
-                      <TableCell className="text-right">${calculations.usa.washingCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>QC + Hand Finish</TableCell>
-                      <TableCell className="text-right">${calculations.usa.qcHandFinishCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow className="font-bold bg-gray-50">
-                      <TableCell>Total Cost</TableCell>
-                      <TableCell className="text-right">${calculations.usa.totalCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>{calculations.usa.marginPercent.toFixed(0)}% Margin</TableCell>
-                      <TableCell className="text-right">${calculations.usa.margin.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow className="font-bold bg-blue-50">
-                      <TableCell>Total Price (USA)</TableCell>
-                      <TableCell className="text-right text-lg">${calculations.usa.totalPrice.toFixed(2)}</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            {/* ACN (Turkey) Costs */}
-            <Card>
-              <CardHeader>
-                <CardTitle>ACN (Turkey) Cost Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cost Item</TableHead>
-                      <TableHead className="text-right">Amount ($)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>Machine Time Cost</TableCell>
-                      <TableCell className="text-right">${calculations.acn.machineTimeCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Linking Time Cost</TableCell>
-                      <TableCell className="text-right">${calculations.acn.linkingTimeCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Yarn Cost</TableCell>
-                      <TableCell className="text-right">${calculations.acn.yarnCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Washing/Steaming</TableCell>
-                      <TableCell className="text-right">${calculations.acn.washingCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>QC + Hand Finish</TableCell>
-                      <TableCell className="text-right">${calculations.acn.qcHandFinishCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow className="font-bold bg-gray-50">
-                      <TableCell>ACN Direct Cost</TableCell>
-                      <TableCell className="text-right">${calculations.acn.directCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>{calculations.acn.acnFactoryMarginPercent.toFixed(0)}% ACN Margin</TableCell>
-                      <TableCell className="text-right">${calculations.acn.margin.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>DHL Shipping</TableCell>
-                      <TableCell className="text-right">${acnRates.dhlShipCost.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow className="font-bold bg-gray-50">
-                      <TableCell>MAEKNIT Cost (from ACN)</TableCell>
-                      <TableCell className="text-right">${calculations.acn.maeknitCostFromACN.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>{calculations.acn.maeknitAcnMarginPercent.toFixed(0)}% MAEKNIT Margin</TableCell>
-                      <TableCell className="text-right">${calculations.acn.maeknitMarginFromACN.toFixed(2)}</TableCell>
-                    </TableRow>
-                    <TableRow className="font-bold bg-blue-50">
-                      <TableCell>Total Price (ACN)</TableCell>
-                      <TableCell className="text-right text-lg">
-                        ${calculations.acn.maeknitTotalPriceFromACN.toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Cost Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Comprehensive Cost Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Process</TableHead>
+                    <TableHead className="text-right">Labor</TableHead>
+                    <TableHead className="text-right">Electricity</TableHead>
+                    <TableHead className="text-right">Depreciation</TableHead>
+                    <TableHead className="text-right">Rent</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">Knitting ({calculations.knitting.timeHr.toFixed(2)}h)</TableCell>
+                    <TableCell className="text-right">${calculations.knitting.labor.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">${calculations.knitting.electricity.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">${calculations.knitting.depreciation.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">${calculations.knitting.rent.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-bold">${calculations.knitting.total.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Linking ({calculations.linking.timeHr.toFixed(2)}h)</TableCell>
+                    <TableCell className="text-right">${calculations.linking.labor.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">${calculations.linking.electricity.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">${calculations.linking.depreciation.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">${calculations.linking.rent.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-bold">${calculations.linking.total.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      Washing/Steaming ({calculations.washing.timeHr.toFixed(2)}h)
+                    </TableCell>
+                    <TableCell className="text-right">${calculations.washing.labor.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      ${(calculations.washing.electricity + calculations.washing.steamingElectricity).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      ${(calculations.washing.depreciation + calculations.washing.steamingDepreciation).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">${calculations.washing.rent.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-bold">${calculations.washing.total.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      QC + Hand Finish ({calculations.qc.timeHr.toFixed(2)}h)
+                    </TableCell>
+                    <TableCell className="text-right">${calculations.qc.labor.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right font-bold">${calculations.qc.total.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Materials (Yarn)</TableCell>
+                    <TableCell className="text-right" colSpan={4}>
+                      -
+                    </TableCell>
+                    <TableCell className="text-right font-bold">${calculations.material.yarn.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow className="bg-muted/50">
+                    <TableCell className="font-bold">TOTAL COST</TableCell>
+                    <TableCell colSpan={4}></TableCell>
+                    <TableCell className="text-right font-bold text-lg">${calculations.totalCost.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">{marginPercent}% Margin</TableCell>
+                    <TableCell colSpan={4}></TableCell>
+                    <TableCell className="text-right">${calculations.marginAmount.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow className="bg-primary/10">
+                    <TableCell className="font-bold text-lg">SELLING PRICE</TableCell>
+                    <TableCell colSpan={4}></TableCell>
+                    <TableCell className="text-right font-bold text-xl text-primary">
+                      ${calculations.sellingPrice.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </CardContent>
       </Card>
     </div>
