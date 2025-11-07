@@ -833,104 +833,13 @@ export function GarmentCostCalculator() {
             </CardContent>
           </Card>
 
-          {/* Standard Times & Materials */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Standard Times (minutes) & Materials</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <div className="space-y-2">
-                <Label>Knitting Time</Label>
-                <Input
-                  type="number"
-                  value={standardKnittingTime ?? ""}
-                  onChange={(e) =>
-                    setStandardKnittingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
-                  }
-                  onWheel={handleWheel}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Linking Time</Label>
-                <Input
-                  type="number"
-                  value={standardLinkingTime ?? ""}
-                  onChange={(e) =>
-                    setStandardLinkingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
-                  }
-                  onWheel={handleWheel}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Washing Time</Label>
-                <Input
-                  type="number"
-                  value={standardWashingTime ?? ""}
-                  onChange={(e) =>
-                    setStandardWashingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
-                  }
-                  onWheel={handleWheel}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>QC Time</Label>
-                <Input
-                  type="number"
-                  value={standardQCTime ?? ""}
-                  onChange={(e) => setStandardQCTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
-                  onWheel={handleWheel}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Yarn Cost ($/kg)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={yarnCostPerKg ?? ""}
-                  onChange={(e) => setYarnCostPerKg(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
-                  onWheel={handleWheel}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Weight (grams)</Label>
-                <Input
-                  type="number"
-                  value={standardGarmentWeightGrams ?? ""}
-                  onChange={(e) =>
-                    setStandardGarmentWeightGrams(e.target.value === "" ? null : Number.parseFloat(e.target.value))
-                  }
-                  onWheel={handleWheel}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Margin */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Margin</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label>Margin (%)</Label>
-                <Input
-                  type="number"
-                  step="1"
-                  value={marginPercent ?? ""}
-                  onChange={(e) => setMarginPercent(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
-                  onWheel={handleWheel}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
+          {/* Standard Times & Materials */} 
           <Separator />
 
           {/* Custom Garment Inputs */}
           <Card>
             <CardHeader>
-              <CardTitle>Custom Garment Inputs (Optional)</CardTitle>
-              <CardDescription>Override standard values for a specific garment calculation</CardDescription>
+              <CardTitle>Garment Inputs</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="space-y-2">
@@ -999,6 +908,16 @@ export function GarmentCostCalculator() {
                   onChange={(e) =>
                     setCustomGarmentWeight(e.target.value === "" ? null : Number.parseFloat(e.target.value))
                   }
+                  onWheel={handleWheel}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Margin (%)</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  value={marginPercent ?? ""}
+                  onChange={(e) => setMarginPercent(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
                   onWheel={handleWheel}
                 />
               </div>
