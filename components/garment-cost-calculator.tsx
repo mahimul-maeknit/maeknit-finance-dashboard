@@ -41,6 +41,8 @@ export type GarmentSavableSettings = {
   qcHandFinishLaborRate: number | null
   programmingLaborRate: number | null
   consultationLaborRate: number | null
+  cadLaborRate: number | null
+  renderingLaborRate: number | null
 
   // Standard times (in minutes)
   standardKnittingTime: number | null
@@ -49,6 +51,8 @@ export type GarmentSavableSettings = {
   standardQCTime: number | null
   standardProgrammingTime: number | null
   standardConsultationTime: number | null
+  standardCadTime: number | null
+  standardRenderingTime: number | null
 
   // Material costs
   yarnCostPerKg: number | null
@@ -84,6 +88,8 @@ const INITIAL_SETTINGS = {
   qcHandFinishLaborRate: 30,
   programmingLaborRate: 40,
   consultationLaborRate: 40,
+  cadLaborRate: 50,
+  renderingLaborRate: 50,
 
   standardKnittingTime: 90, // minutes
   standardLinkingTime: 60,
@@ -91,6 +97,8 @@ const INITIAL_SETTINGS = {
   standardQCTime: 20,
   standardProgrammingTime: 15, // minutes
   standardConsultationTime: 30, // minutes
+  standardCadTime: 45, // minutes
+  standardRenderingTime: 60, // minutes
 
   yarnCostPerKg: 25,
   standardGarmentWeightGrams: 600,
@@ -146,12 +154,12 @@ export function GarmentCostCalculator() {
   const [qcHandFinishLaborRate, setQcHandFinishLaborRate] = useState<number | null>(
     INITIAL_SETTINGS.qcHandFinishLaborRate,
   )
-  const [programmingLaborRate, setProgrammingLaborRate] = useState<number | null>(
-    INITIAL_SETTINGS.programmingLaborRate,
-  )
+  const [programmingLaborRate, setProgrammingLaborRate] = useState<number | null>(INITIAL_SETTINGS.programmingLaborRate)
   const [consultationLaborRate, setConsultationLaborRate] = useState<number | null>(
-    INITIAL_SETTINGS.consultationLaborRate, 
+    INITIAL_SETTINGS.consultationLaborRate,
   )
+  const [cadLaborRate, setCadLaborRate] = useState<number | null>(INITIAL_SETTINGS.cadLaborRate)
+  const [renderingLaborRate, setRenderingLaborRate] = useState<number | null>(INITIAL_SETTINGS.renderingLaborRate)
 
   // Standard times
   const [standardKnittingTime, setStandardKnittingTime] = useState<number | null>(INITIAL_SETTINGS.standardKnittingTime)
@@ -163,6 +171,11 @@ export function GarmentCostCalculator() {
   )
   const [standardConsultationTime, setStandardConsultationTime] = useState<number | null>(
     INITIAL_SETTINGS.standardConsultationTime,
+  )
+  // Added state for standard CAD and 3D Rendering times
+  const [standardCadTime, setStandardCadTime] = useState<number | null>(INITIAL_SETTINGS.standardCadTime)
+  const [standardRenderingTime, setStandardRenderingTime] = useState<number | null>(
+    INITIAL_SETTINGS.standardRenderingTime,
   )
 
   // Material costs
@@ -182,6 +195,9 @@ export function GarmentCostCalculator() {
   const [customQCTime, setCustomQCTime] = useState<number | null>(null)
   const [customProgrammingTime, setCustomProgrammingTime] = useState<number | null>(null)
   const [customConsultationTime, setCustomConsultationTime] = useState<number | null>(null)
+  // Added custom times for CAD and 3D Rendering
+  const [customCadTime, setCustomCadTime] = useState<number | null>(null)
+  const [customRenderingTime, setCustomRenderingTime] = useState<number | null>(null)
   const [customYarnCost, setCustomYarnCost] = useState<number | null>(null)
   const [customGarmentWeight, setCustomGarmentWeight] = useState<number | null>(null)
 
@@ -202,6 +218,9 @@ export function GarmentCostCalculator() {
     const qcTimeMin = customQCTime ?? standardQCTime ?? 0
     const programmingTimeMin = customProgrammingTime ?? standardProgrammingTime ?? 0
     const consultationTimeMin = customConsultationTime ?? standardConsultationTime ?? 0
+    // Added custom times for CAD and 3D Rendering to calculations
+    const cadTimeMin = customCadTime ?? standardCadTime ?? 0
+    const renderingTimeMin = customRenderingTime ?? standardRenderingTime ?? 0
     const yarnCost = customYarnCost ?? yarnCostPerKg ?? 0
     const garmentWeightGrams = customGarmentWeight ?? standardGarmentWeightGrams ?? 0
 
@@ -212,6 +231,9 @@ export function GarmentCostCalculator() {
     const qcTimeHr = qcTimeMin / 60
     const programmingTimeHr = programmingTimeMin / 60
     const consultationTimeHr = consultationTimeMin / 60
+    // Convert CAD and 3D Rendering times to hours
+    const cadTimeHr = cadTimeMin / 60
+    const renderingTimeHr = renderingTimeMin / 60
 
     // Calculate rent per machine per hour
     const rentPerHour = (monthlyRent ?? 0) / (workingHoursPerMonth ?? 1)
@@ -253,6 +275,13 @@ export function GarmentCostCalculator() {
     const consultationLabor = consultationTimeHr * (consultationLaborRate ?? 0)
     const consultationTotalCost = consultationLabor
 
+    // Added CAD and 3D Rendering costs
+    const cadLabor = cadTimeHr * (cadLaborRate ?? 0)
+    const cadTotalCost = cadLabor
+
+    const renderingLabor = renderingTimeHr * (renderingLaborRate ?? 0)
+    const renderingTotalCost = renderingLabor
+
     // MATERIAL COST (Yarn)
     const materialCost = (garmentWeightGrams / 1000) * yarnCost
 
@@ -264,6 +293,8 @@ export function GarmentCostCalculator() {
       qcTotalCost +
       programmingTotalCost +
       consultationTotalCost +
+      cadTotalCost + // Include CAD cost
+      renderingTotalCost + // Include Rendering cost
       materialCost
 
     // MARGIN & PRICE
@@ -317,6 +348,17 @@ export function GarmentCostCalculator() {
         total: consultationTotalCost,
         timeHr: consultationTimeHr,
       },
+      // Add CAD and 3D Rendering to the calculations object
+      cad: {
+        labor: cadLabor,
+        total: cadTotalCost,
+        timeHr: cadTimeHr,
+      },
+      rendering: {
+        labor: renderingLabor,
+        total: renderingTotalCost,
+        timeHr: renderingTimeHr,
+      },
       material: {
         yarn: materialCost,
         total: materialCost,
@@ -335,6 +377,9 @@ export function GarmentCostCalculator() {
     customQCTime,
     customProgrammingTime,
     customConsultationTime,
+    // Add custom CAD and 3D Rendering times to dependencies
+    customCadTime,
+    customRenderingTime,
     customYarnCost,
     customGarmentWeight,
     standardKnittingTime,
@@ -343,6 +388,9 @@ export function GarmentCostCalculator() {
     standardQCTime,
     standardProgrammingTime,
     standardConsultationTime,
+    // Add standard CAD and 3D Rendering times to dependencies
+    standardCadTime,
+    standardRenderingTime,
     yarnCostPerKg,
     standardGarmentWeightGrams,
     monthlyRent,
@@ -364,6 +412,9 @@ export function GarmentCostCalculator() {
     qcHandFinishLaborRate,
     programmingLaborRate,
     consultationLaborRate,
+    // Add CAD and 3D Rendering labor rates to dependencies
+    cadLaborRate,
+    renderingLaborRate,
     marginPercent,
     surchargePercent,
   ])
@@ -389,12 +440,18 @@ export function GarmentCostCalculator() {
     setQcHandFinishLaborRate(INITIAL_SETTINGS.qcHandFinishLaborRate)
     setProgrammingLaborRate(INITIAL_SETTINGS.programmingLaborRate)
     setConsultationLaborRate(INITIAL_SETTINGS.consultationLaborRate)
+    // Reset CAD and 3D Rendering labor rates to defaults
+    setCadLaborRate(INITIAL_SETTINGS.cadLaborRate)
+    setRenderingLaborRate(INITIAL_SETTINGS.renderingLaborRate)
     setStandardKnittingTime(INITIAL_SETTINGS.standardKnittingTime)
     setStandardLinkingTime(INITIAL_SETTINGS.standardLinkingTime)
     setStandardWashingTime(INITIAL_SETTINGS.standardWashingTime)
     setStandardQCTime(INITIAL_SETTINGS.standardQCTime)
     setStandardProgrammingTime(INITIAL_SETTINGS.standardProgrammingTime)
     setStandardConsultationTime(INITIAL_SETTINGS.standardConsultationTime)
+    // Reset standard CAD and 3D Rendering times to defaults
+    setStandardCadTime(INITIAL_SETTINGS.standardCadTime)
+    setStandardRenderingTime(INITIAL_SETTINGS.standardRenderingTime)
     setYarnCostPerKg(INITIAL_SETTINGS.yarnCostPerKg)
     setStandardGarmentWeightGrams(INITIAL_SETTINGS.standardGarmentWeightGrams)
     setMarginPercent(INITIAL_SETTINGS.marginPercent)
@@ -405,6 +462,9 @@ export function GarmentCostCalculator() {
     setCustomQCTime(null)
     setCustomProgrammingTime(null)
     setCustomConsultationTime(null)
+    // Reset custom CAD and 3D Rendering times to null
+    setCustomCadTime(null)
+    setCustomRenderingTime(null)
     setCustomYarnCost(null)
     setCustomGarmentWeight(null)
   }
@@ -433,12 +493,18 @@ export function GarmentCostCalculator() {
       qcHandFinishLaborRate,
       programmingLaborRate,
       consultationLaborRate,
+      // Include CAD and 3D Rendering labor rates in settings to save
+      cadLaborRate,
+      renderingLaborRate,
       standardKnittingTime,
       standardLinkingTime,
       standardWashingTime,
       standardQCTime,
       standardProgrammingTime,
       standardConsultationTime,
+      // Include standard CAD and 3D Rendering times in settings to save
+      standardCadTime,
+      standardRenderingTime,
       yarnCostPerKg,
       standardGarmentWeightGrams,
       marginPercent,
@@ -487,12 +553,18 @@ export function GarmentCostCalculator() {
     qcHandFinishLaborRate,
     programmingLaborRate,
     consultationLaborRate,
+    // Include CAD and 3D Rendering labor rates in dependencies
+    cadLaborRate,
+    renderingLaborRate,
     standardKnittingTime,
     standardLinkingTime,
     standardWashingTime,
     standardQCTime,
     standardProgrammingTime,
     standardConsultationTime,
+    // Include standard CAD and 3D Rendering times in dependencies
+    standardCadTime,
+    standardRenderingTime,
     yarnCostPerKg,
     standardGarmentWeightGrams,
     marginPercent,
@@ -545,12 +617,18 @@ export function GarmentCostCalculator() {
       qcHandFinishLaborRate,
       programmingLaborRate,
       consultationLaborRate,
+      // Include CAD and 3D Rendering labor rates in settings to save
+      cadLaborRate,
+      renderingLaborRate,
       standardKnittingTime,
       standardLinkingTime,
       standardWashingTime,
       standardQCTime,
       standardProgrammingTime,
       standardConsultationTime,
+      // Include standard CAD and 3D Rendering times in settings to save
+      standardCadTime,
+      standardRenderingTime,
       yarnCostPerKg,
       standardGarmentWeightGrams,
       marginPercent,
@@ -624,9 +702,10 @@ export function GarmentCostCalculator() {
               setWashingLaborRate(fetchedSettings.washingLaborRate ?? INITIAL_SETTINGS.washingLaborRate)
               setQcHandFinishLaborRate(fetchedSettings.qcHandFinishLaborRate ?? INITIAL_SETTINGS.qcHandFinishLaborRate)
               setProgrammingLaborRate(fetchedSettings.programmingLaborRate ?? INITIAL_SETTINGS.programmingLaborRate)
-              setConsultationLaborRate(
-                fetchedSettings.consultationLaborRate ?? INITIAL_SETTINGS.consultationLaborRate,
-              )
+              setConsultationLaborRate(fetchedSettings.consultationLaborRate ?? INITIAL_SETTINGS.consultationLaborRate)
+              // Fetch and set CAD and 3D Rendering labor rates
+              setCadLaborRate(fetchedSettings.cadLaborRate ?? INITIAL_SETTINGS.cadLaborRate)
+              setRenderingLaborRate(fetchedSettings.renderingLaborRate ?? INITIAL_SETTINGS.renderingLaborRate)
               setStandardKnittingTime(fetchedSettings.standardKnittingTime ?? INITIAL_SETTINGS.standardKnittingTime)
               setStandardLinkingTime(fetchedSettings.standardLinkingTime ?? INITIAL_SETTINGS.standardLinkingTime)
               setStandardWashingTime(fetchedSettings.standardWashingTime ?? INITIAL_SETTINGS.standardWashingTime)
@@ -637,6 +716,9 @@ export function GarmentCostCalculator() {
               setStandardConsultationTime(
                 fetchedSettings.standardConsultationTime ?? INITIAL_SETTINGS.standardConsultationTime,
               )
+              // Fetch and set standard CAD and 3D Rendering times
+              setStandardCadTime(fetchedSettings.standardCadTime ?? INITIAL_SETTINGS.standardCadTime)
+              setStandardRenderingTime(fetchedSettings.standardRenderingTime ?? INITIAL_SETTINGS.standardRenderingTime)
               setYarnCostPerKg(fetchedSettings.yarnCostPerKg ?? INITIAL_SETTINGS.yarnCostPerKg)
               setStandardGarmentWeightGrams(
                 fetchedSettings.standardGarmentWeightGrams ?? INITIAL_SETTINGS.standardGarmentWeightGrams,
@@ -953,7 +1035,31 @@ export function GarmentCostCalculator() {
                   }
                   onWheel={handleWheel}
                 />
-              </div>  
+              </div>
+              {/* Added input for CAD Labor Rate */}
+              <div className="space-y-2">
+                <Label>CAD</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={cadLaborRate ?? ""}
+                  onChange={(e) => setCadLaborRate(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
+                  onWheel={handleWheel}
+                />
+              </div>
+              {/* Added input for 3D Rendering Labor Rate */}
+              <div className="space-y-2">
+                <Label>3D Rendering</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={renderingLaborRate ?? ""}
+                  onChange={(e) =>
+                    setRenderingLaborRate(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -1032,6 +1138,30 @@ export function GarmentCostCalculator() {
                   placeholder={standardConsultationTime?.toString()}
                   onChange={(e) =>
                     setCustomConsultationTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
+                  }
+                  onWheel={handleWheel}
+                />
+              </div>
+              {/* Added input for Custom CAD Time */}
+              <div className="space-y-2">
+                <Label>CAD Time (min)</Label>
+                <Input
+                  type="number"
+                  value={customCadTime ?? ""}
+                  placeholder={standardCadTime?.toString()}
+                  onChange={(e) => setCustomCadTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
+                  onWheel={handleWheel}
+                />
+              </div>
+              {/* Added input for Custom 3D Rendering Time */}
+              <div className="space-y-2">
+                <Label>3D Rendering Time (min)</Label>
+                <Input
+                  type="number"
+                  value={customRenderingTime ?? ""}
+                  placeholder={standardRenderingTime?.toString()}
+                  onChange={(e) =>
+                    setCustomRenderingTime(e.target.value === "" ? null : Number.parseFloat(e.target.value))
                   }
                   onWheel={handleWheel}
                 />
@@ -1179,6 +1309,25 @@ export function GarmentCostCalculator() {
                     <TableCell className="text-right font-bold">
                       ${calculations.consultation.total.toFixed(2)}
                     </TableCell>
+                  </TableRow>
+                  {/* Added CAD and 3D Rendering rows to the table */}
+                  <TableRow>
+                    <TableCell className="font-medium">CAD ({calculations.cad.timeHr.toFixed(2)}h)</TableCell>
+                    <TableCell className="text-right">${calculations.cad.labor.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right font-bold">${calculations.cad.total.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      3D Rendering ({calculations.rendering.timeHr.toFixed(2)}h)
+                    </TableCell>
+                    <TableCell className="text-right">${calculations.rendering.labor.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right">-</TableCell>
+                    <TableCell className="text-right font-bold">${calculations.rendering.total.toFixed(2)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">Materials (Yarn)</TableCell>
@@ -1347,6 +1496,34 @@ export function GarmentCostCalculator() {
         </div>
       </div>
 
+      {/* Added CAD Cost Formula */}
+      <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
+        <h4 className="font-semibold mb-2">CAD Cost Calculation:</h4>
+        <div className="text-sm font-mono space-y-1 text-muted-foreground">
+          <div>
+            Labor: ${cadLaborRate ?? 0}/hr × {calculations.cad.timeHr.toFixed(2)}hr = $
+            {calculations.cad.labor.toFixed(2)}
+          </div>
+          <div className="text-xs italic">(No machine costs - labor only)</div>
+          <Separator className="my-2" />
+          <div className="font-bold text-foreground">Total: ${calculations.cad.total.toFixed(2)}</div>
+        </div>
+      </div>
+
+      {/* Added 3D Rendering Cost Formula */}
+      <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
+        <h4 className="font-semibold mb-2">3D Rendering Cost Calculation:</h4>
+        <div className="text-sm font-mono space-y-1 text-muted-foreground">
+          <div>
+            Labor: ${renderingLaborRate ?? 0}/hr × {calculations.rendering.timeHr.toFixed(2)}hr = $
+            {calculations.rendering.labor.toFixed(2)}
+          </div>
+          <div className="text-xs italic">(No machine costs - labor only)</div>
+          <Separator className="my-2" />
+          <div className="font-bold text-foreground">Total: ${calculations.rendering.total.toFixed(2)}</div>
+        </div>
+      </div>
+
       {/* Material Cost Formula */}
       <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
         <h4 className="font-semibold mb-2">Material Cost Calculation:</h4>
@@ -1367,8 +1544,10 @@ export function GarmentCostCalculator() {
           <div>
             Total Cost: ${calculations.knitting.total.toFixed(2)} + ${calculations.linking.total.toFixed(2)} + $
             {calculations.washing.total.toFixed(2)} + ${calculations.qc.total.toFixed(2)} + $
-            {calculations.programming.total.toFixed(2)} + ${calculations.consultation.total.toFixed(2)} + $
-            {calculations.material.total.toFixed(2)} = ${calculations.totalCost.toFixed(2)}
+            {calculations.programming.total.toFixed(2)} + ${calculations.consultation.total.toFixed(2)}
+            {/* Added CAD and 3D Rendering costs to Total Cost */}+ ${calculations.cad.total.toFixed(2)} + $
+            {calculations.rendering.total.toFixed(2)} + ${calculations.material.total.toFixed(2)} = $
+            {calculations.totalCost.toFixed(2)}
           </div>
           <div>
             Margin: ${calculations.totalCost.toFixed(2)} ÷ (1 - {(marginPercent ?? 0) / 100}) - $
@@ -1405,8 +1584,8 @@ export function GarmentCostCalculator() {
           <div className="font-mono bg-white dark:bg-slate-950 p-3 rounded border">
             <div className="font-semibold mb-2">Total Cost & Pricing:</div>
             <div className="text-blue-600 dark:text-blue-400">
-              Total Cost = Knitting + Linking + Washing/Steaming + QC/Hand Finish + Programming + Consultation +
-              Materials
+              Total Cost = Knitting + Linking + Washing/Steaming + QC/Hand Finish + Programming + Consultation + CAD +
+              3D Rendering + Materials
               <br />
               Selling Price = Total Cost ÷ (1 - Margin%)
               <br />
