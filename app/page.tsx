@@ -29,8 +29,10 @@ import AuthStatus from "@/components/auth-status"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { GarmentCostCalculator } from "@/components/garment-cost-calculator" // Import the new component
+import { GarmentCostCalculator } from "@/components/garment-cost-calculator"
 import { CapacityPlanningTool } from "@/components/capacity-planning-tool"
+import { DevelopmentCostCalculator } from "@/components/development-cost-calculator"
+import { TrendingUp, Receipt, TrendingDown, Factory } from "lucide-react"
 
 // Define a type for the savable settings
 type SavableSettings = {
@@ -380,30 +382,38 @@ export default function FinanceDashboard() {
     }
   }, [session, status, router])
 
-  // Show loading state while session is being fetched
   if (status === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-lg text-gray-600">Loading dashboard...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <span className="text-sm">Loading dashboard...</span>
+        </div>
       </div>
     )
   }
 
-  // If authenticated but not authorized, the useEffect above will redirect.
-  // This ensures the dashboard content is only rendered for authorized users.
-
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:px-8 mx-auto space-y-6">
-      <AuthStatus />
-      <div className="max-w-full px-4 sm:px-6 lg:px-8 mx-auto space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">MAEKNIT NY Manufacturing Dashboard</h1>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-14 items-center px-6">
+          <div className="flex flex-1 items-center gap-3">
+            <div className="h-6 w-[3px] rounded-full bg-foreground" />
+            <div className="leading-tight">
+              <p className="text-sm font-semibold tracking-tight">MAEKNIT NY</p>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-widest">Manufacturing Dashboard</p>
+            </div>
+          </div>
+          <AuthStatus />
         </div>
+      </header>
+      <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto space-y-6">
 
         <Tabs defaultValue="finance" className="space-y-6">
           <TabsList className="flex flex-wrap justify-center w-full gap-2">
             <TabsTrigger value="finance">Finance Dashboard</TabsTrigger>
             <TabsTrigger value="garment-cost">Garment Cost Calculator</TabsTrigger>
+            <TabsTrigger value="development-cost">MAEKNIT Calculator</TabsTrigger>
             <TabsTrigger value="capacity-planning">Capacity Planning</TabsTrigger>
           </TabsList>
 
@@ -519,63 +529,87 @@ export default function FinanceDashboard() {
 
                 {/* Key Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-gray-600">Annual Revenue</CardTitle>
+                  <Card className="relative overflow-hidden shadow-sm">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-l-lg" />
+                    <CardHeader className="pb-2 pl-5">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Annual Revenue</CardTitle>
+                        <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                          <TrendingUp className="h-4 w-4 text-emerald-600" />
+                        </div>
+                      </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-green-600">
+                    <CardContent className="pl-5">
+                      <div className="text-2xl font-bold text-emerald-600">
                         ${calculations.totalRevenue.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         Production: ${calculations.productionRevenue.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         Development: ${calculations.developmentRevenue.toLocaleString()}
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-gray-600">Annual Expenses</CardTitle>
+                  <Card className="relative overflow-hidden shadow-sm">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-l-lg" />
+                    <CardHeader className="pb-2 pl-5">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Annual Expenses</CardTitle>
+                        <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center">
+                          <Receipt className="h-4 w-4 text-red-500" />
+                        </div>
+                      </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pl-5">
                       <div className="text-2xl font-bold text-red-600">
                         ${calculations.annualExpenses.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         Monthly: ${calculations.monthlyExpenses.toLocaleString()}
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-gray-600">Annual Profit</CardTitle>
+                  <Card className="relative overflow-hidden shadow-sm">
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${calculations.profit > 0 ? "bg-blue-500" : "bg-red-400"}`} />
+                    <CardHeader className="pb-2 pl-5">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Annual Profit</CardTitle>
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${calculations.profit > 0 ? "bg-blue-50" : "bg-red-50"}`}>
+                          <TrendingDown className={`h-4 w-4 ${calculations.profit > 0 ? "text-blue-500 rotate-180" : "text-red-500"}`} />
+                        </div>
+                      </div>
                     </CardHeader>
-                    <CardContent>
-                      <div
-                        className={`text-2xl font-bold ${calculations.profit > 0 ? "text-green-600" : "text-red-600"}`}
-                      >
+                    <CardContent className="pl-5">
+                      <div className={`text-2xl font-bold ${calculations.profit > 0 ? "text-blue-600" : "text-red-600"}`}>
                         ${calculations.profit.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">Margin: {calculations.profitMargin.toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Margin: {calculations.profitMargin.toFixed(1)}%
+                      </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-gray-600">Production Capacity</CardTitle>
+                  <Card className="relative overflow-hidden shadow-sm">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-violet-500 rounded-l-lg" />
+                    <CardHeader className="pb-2 pl-5">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Production Capacity</CardTitle>
+                        <div className="h-8 w-8 rounded-lg bg-violet-50 flex items-center justify-center">
+                          <Factory className="h-4 w-4 text-violet-500" />
+                        </div>
+                      </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-blue-600">
+                    <CardContent className="pl-5">
+                      <div className="text-2xl font-bold text-violet-600">
                         {calculations.annualProductionCapacity.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         Daily: {calculations.dailyProductionCapacity} garments
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         {shifts} shift{shifts !== null && shifts > 1 ? "s" : ""}
                       </div>
                     </CardContent>
@@ -896,6 +930,10 @@ export default function FinanceDashboard() {
               </TabsContent>
             </Tabs>
             {/* END NESTED TABS FOR FINANCE DASHBOARD */}
+          </TabsContent>
+
+          <TabsContent value="development-cost" className="space-y-6 p-4">
+            <DevelopmentCostCalculator />
           </TabsContent>
 
           <TabsContent value="capacity-planning" className="space-y-6 p-4">

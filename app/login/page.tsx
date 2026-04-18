@@ -55,79 +55,102 @@ export default function LoginPage() {
 
   if (status === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-lg text-gray-600">Loading...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <span className="text-sm">Loading...</span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <Card className="w-full max-w-md text-center">
-        <CardHeader>
-          <CardTitle className="text-2xl">Welcome to MAEKNIT Dashboard</CardTitle>
-          <CardDescription>Please sign in to access the financial dashboard.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4">
-          {/* Display general NextAuth errors */}
-          {error && (
-            <div className="text-red-600 font-medium">
-              {error === "AccessDenied"
-                ? "Access Denied: Your email is not authorized."
-                : "An error occurred during login. Please try again."}
-            </div>
-          )}
-          {/* Display credentials login specific errors */}
-          {loginError && <div className="text-red-600 font-medium">{loginError}</div>}
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm space-y-8">
+        {/* Brand mark */}
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-2.5 mb-1">
+            <div className="h-7 w-[3px] rounded-full bg-foreground" />
+            <span className="text-2xl font-semibold tracking-tight">MAEKNIT NY</span>
+          </div>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Manufacturing Dashboard</p>
+        </div>
 
-          {status === "unauthenticated" && (
-            <>
-              {/* Google Login Button */}
-              <Button
-                variant="outline"
-                className="bg-black text-white hover:bg-gray-800 hover:text-white w-full"
-                onClick={() => signIn("google")}
-              >
-                Sign in with Google
-              </Button>
+        <Card className="shadow-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-semibold">Sign in</CardTitle>
+            <CardDescription className="text-xs">Access your financial dashboard</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && (
+              <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-600 border border-red-100">
+                {error === "AccessDenied"
+                  ? "Your email is not authorized to access this dashboard."
+                  : "An error occurred during login. Please try again."}
+              </div>
+            )}
+            {loginError && (
+              <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-600 border border-red-100">
+                {loginError}
+              </div>
+            )}
 
-              <Separator className="my-4" />
-
-              {/* Credentials Login Form */}
-              <form onSubmit={handleCredentialsLogin} className="w-full space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Guest@maeknit.io"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="password123"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full">
-                  Sign in with Credentials
+            {status === "unauthenticated" && (
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+                  onClick={() => signIn("google")}
+                >
+                  Continue with Google
                 </Button>
-              </form>
-            </>
-          )}
-          {status === "authenticated" && (
-            <div className="text-green-600 font-medium">You are signed in. Redirecting...</div>
-          )}
-        </CardContent>
-      </Card>
+
+                <div className="relative">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+                    or
+                  </span>
+                </div>
+
+                <form onSubmit={handleCredentialsLogin} className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-xs">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="you@maeknit.io"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-xs">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Sign in
+                  </Button>
+                </form>
+              </>
+            )}
+
+            {status === "authenticated" && (
+              <div className="flex items-center gap-2 text-xs text-emerald-600">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Signed in — redirecting...
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -235,31 +235,32 @@ export function GarmentCostCalculator() {
     const cadTimeHr = cadTimeMin / 60
     const renderingTimeHr = renderingTimeMin / 60
 
-    // Calculate rent per machine per hour
+    // Rent is allocated per machine-hour across ALL machines equally.
+    // Using total machine count prevents triple-counting when multiple machine types exist.
     const rentPerHour = (monthlyRent ?? 0) / (workingHoursPerMonth ?? 1)
-    const rentPerKnittingMachine = (knittingMachineCount ?? 0) > 0 ? rentPerHour / (knittingMachineCount ?? 1) : 0
-    const rentPerLinkingMachine = (linkingMachineCount ?? 0) > 0 ? rentPerHour / (linkingMachineCount ?? 1) : 0
-    const rentPerWashingMachine = (washingMachineCount ?? 0) > 0 ? rentPerHour / (washingMachineCount ?? 1) : 0
+    const totalMachineCount =
+      (knittingMachineCount ?? 0) + (linkingMachineCount ?? 0) + (washingMachineCount ?? 0)
+    const rentPerMachineHour = totalMachineCount > 0 ? rentPerHour / totalMachineCount : 0
 
     // KNITTING COST = (Labor × time) + (time × electricity) + (time × depreciation) + (time × rent)
     const knittingLabor = knittingTimeHr * (knittingLaborRate ?? 0)
     const knittingElectricity = knittingTimeHr * (knittingElectricityCost ?? 0)
     const knittingDepreciation = knittingTimeHr * (knittingDepreciationPerHour ?? 0)
-    const knittingRent = knittingTimeHr * rentPerKnittingMachine
+    const knittingRent = knittingTimeHr * rentPerMachineHour
     const knittingTotalCost = knittingLabor + knittingElectricity + knittingDepreciation + knittingRent
 
     // LINKING COST
     const linkingLabor = linkingTimeHr * (linkingLaborRate ?? 0)
     const linkingElectricity = linkingTimeHr * (linkingElectricityCost ?? 0)
     const linkingDepreciation = linkingTimeHr * (linkingDepreciationPerHour ?? 0)
-    const linkingRent = linkingTimeHr * rentPerLinkingMachine
+    const linkingRent = linkingTimeHr * rentPerMachineHour
     const linkingTotalCost = linkingLabor + linkingElectricity + linkingDepreciation + linkingRent
 
     // WASHING/STEAMING COST
     const washingLabor = washingTimeHr * (washingLaborRate ?? 0)
     const washingElectricity = washingTimeHr * (washingElectricityCost ?? 0)
     const washingDepreciation = washingTimeHr * (washingDepreciationPerHour ?? 0)
-    const washingRent = washingTimeHr * rentPerWashingMachine
+    const washingRent = washingTimeHr * rentPerMachineHour
     const steamingElectricity = washingTimeHr * (steamingElectricityCost ?? 0) // Steaming happens after washing
     const steamingDepreciation = washingTimeHr * (steamingDepreciationPerHour ?? 0)
     const washingTotalCost =
@@ -298,8 +299,10 @@ export function GarmentCostCalculator() {
       materialCost
 
     // MARGIN & PRICE
-    const marginDecimal = (marginPercent ?? 0) / 100
-    const sellingPrice = marginDecimal < 1 ? totalCost / (1 - marginDecimal) : totalCost
+    // Cap margin at 99.9% — at 100% the gross-margin formula divides by zero.
+    const clampedMargin = Math.min(Math.max(marginPercent ?? 0, 0), 99.9)
+    const marginDecimal = clampedMargin / 100
+    const sellingPrice = totalCost / (1 - marginDecimal)
     const marginAmount = sellingPrice - totalCost
 
     const surchargeDecimal = (surchargePercent ?? 0) / 100
@@ -369,6 +372,8 @@ export function GarmentCostCalculator() {
       surchargeAmount,
       finalPrice,
       rentPerHour,
+      rentPerMachineHour,
+      totalMachineCount,
     }
   }, [
     customKnittingTime,
@@ -745,38 +750,75 @@ export function GarmentCostCalculator() {
   if (isLoading) {
     return (
       <div className="flex min-h-[300px] items-center justify-center">
-        <p className="text-lg text-muted-foreground">Loading calculator settings...</p>
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <span className="text-sm">Loading calculator settings...</span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Garment Cost Calculator</CardTitle>
-              <CardDescription>
-                Calculate comprehensive garment costs including labor, electricity, depreciation, and rent allocation
-              </CardDescription>
-            </div>
-            {autoSaveStatus !== "idle" && (
-              <div className="text-sm text-muted-foreground">
-                {autoSaveStatus === "saving" && "Saving..."}
-                {autoSaveStatus === "saved" && "✓ Auto-saved"}
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
+    <div className="space-y-3 [&_input]:h-8 [&_input]:text-xs [&_label]:text-xs [&_label]:text-muted-foreground">
+      {/* Page header + toolbar */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold leading-tight">Garment Cost Calculator</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Labor, electricity, depreciation &amp; rent allocation
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {autoSaveStatus !== "idle" && (
+            <span className="text-xs text-muted-foreground">
+              {autoSaveStatus === "saving" ? "Saving..." : "✓ Saved"}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={handleResetToDefaults}>
+            Reset
+          </Button>
+          <Button size="sm" onClick={handleSaveSettings} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save Settings"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Price Summary Strip */}
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="relative overflow-hidden shadow-sm">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-400 rounded-l-lg" />
+          <CardContent className="py-3 pl-4 pr-3">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-none mb-1">Total Cost</p>
+            <p className="text-lg font-bold leading-tight">${calculations.totalCost.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+        <Card className="relative overflow-hidden shadow-sm">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-l-lg" />
+          <CardContent className="py-3 pl-4 pr-3">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-none mb-1">
+              Selling Price ({marginPercent}% margin)
+            </p>
+            <p className="text-lg font-bold text-blue-600 leading-tight">${calculations.sellingPrice.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+        <Card className="relative overflow-hidden shadow-sm">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-l-lg" />
+          <CardContent className="py-3 pl-4 pr-3">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-none mb-1">
+              Final Price (+{surchargePercent}% surcharge)
+            </p>
+            <p className="text-lg font-bold text-emerald-600 leading-tight">${calculations.finalPrice.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
           {/* Facility Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Facility Settings</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="px-4 py-3 pb-2">
+              <CardTitle className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Facility Settings</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 pb-4">
+              <div className="space-y-1">
                 <Label>Monthly Rent ($)</Label>
                 <Input
                   type="number"
@@ -785,7 +827,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Working Hours/Month</Label>
                 <Input
                   type="number"
@@ -796,7 +838,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Rent Per Hour</Label>
                 <Input type="text" value={`$${calculations.rentPerHour.toFixed(2)}`} disabled className="bg-muted" />
               </div>
@@ -804,13 +846,13 @@ export function GarmentCostCalculator() {
           </Card>
 
           {/* Machine Settings & Depreciation */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Machine Settings & Depreciation</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="px-4 py-3 pb-2">
+              <CardTitle className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Machine Settings &amp; Depreciation</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
+            <CardContent className="space-y-3 px-4 pb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
                   <Label>Knitting Machines</Label>
                   <Input
                     type="number"
@@ -821,7 +863,7 @@ export function GarmentCostCalculator() {
                     onWheel={handleWheel}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label>Linking Machines</Label>
                   <Input
                     type="number"
@@ -832,7 +874,7 @@ export function GarmentCostCalculator() {
                     onWheel={handleWheel}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label>Washing Machines</Label>
                   <Input
                     type="number"
@@ -845,11 +887,11 @@ export function GarmentCostCalculator() {
                 </div>
               </div>
               <Separator />
-              <div className="space-y-2">
-                <Label className="text-base font-semibold">Depreciation per Machine ($/hour)</Label>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-normal">Knitting</Label>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Depreciation per Machine ($/hour)</Label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Knitting</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -860,8 +902,8 @@ export function GarmentCostCalculator() {
                       onWheel={handleWheel}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-normal">Linking</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Linking</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -872,8 +914,8 @@ export function GarmentCostCalculator() {
                       onWheel={handleWheel}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-normal">Washing</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Washing</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -884,8 +926,8 @@ export function GarmentCostCalculator() {
                       onWheel={handleWheel}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-normal">Steaming</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Steaming</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -902,12 +944,12 @@ export function GarmentCostCalculator() {
           </Card>
 
           {/* Electricity Costs */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Electricity Costs ($/hour)</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="px-4 py-3 pb-2">
+              <CardTitle className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Electricity Costs ($/hour)</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 px-4 pb-4">
+              <div className="space-y-1">
                 <Label>Knitting</Label>
                 <Input
                   type="number"
@@ -919,7 +961,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Linking</Label>
                 <Input
                   type="number"
@@ -931,7 +973,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Washing</Label>
                 <Input
                   type="number"
@@ -943,7 +985,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Steaming</Label>
                 <Input
                   type="number"
@@ -959,12 +1001,12 @@ export function GarmentCostCalculator() {
           </Card>
 
           {/* Labor Rates */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Labor Rates ($/hour)</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="px-4 py-3 pb-2">
+              <CardTitle className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Labor Rates ($/hour)</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 px-4 pb-4">
+              <div className="space-y-1">
                 <Label>Knitting</Label>
                 <Input
                   type="number"
@@ -976,7 +1018,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Linking</Label>
                 <Input
                   type="number"
@@ -988,7 +1030,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Washing</Label>
                 <Input
                   type="number"
@@ -1000,7 +1042,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>QC + Hand Finish</Label>
                 <Input
                   type="number"
@@ -1012,7 +1054,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Programming</Label>
                 <Input
                   type="number"
@@ -1024,7 +1066,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Consultation</Label>
                 <Input
                   type="number"
@@ -1037,7 +1079,7 @@ export function GarmentCostCalculator() {
                 />
               </div>
               {/* Added input for CAD Labor Rate */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>CAD</Label>
                 <Input
                   type="number"
@@ -1048,7 +1090,7 @@ export function GarmentCostCalculator() {
                 />
               </div>
               {/* Added input for 3D Rendering Labor Rate */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>3D Rendering</Label>
                 <Input
                   type="number"
@@ -1067,12 +1109,12 @@ export function GarmentCostCalculator() {
           <Separator />
 
           {/* Custom Garment Inputs */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Garment Inputs</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="px-4 py-3 pb-2">
+              <CardTitle className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Garment Inputs</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <div className="space-y-2">
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 px-4 pb-4">
+              <div className="space-y-1">
                 <Label>Knitting Time (min)</Label>
                 <Input
                   type="number"
@@ -1084,7 +1126,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Linking Time (min)</Label>
                 <Input
                   type="number"
@@ -1096,7 +1138,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Washing Time (min)</Label>
                 <Input
                   type="number"
@@ -1108,7 +1150,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>QC Time (min)</Label>
                 <Input
                   type="number"
@@ -1118,7 +1160,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Programming Time (min)</Label>
                 <Input
                   type="number"
@@ -1130,7 +1172,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Consultation Time (min)</Label>
                 <Input
                   type="number"
@@ -1143,7 +1185,7 @@ export function GarmentCostCalculator() {
                 />
               </div>
               {/* Added input for Custom CAD Time */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>CAD Time (min)</Label>
                 <Input
                   type="number"
@@ -1154,7 +1196,7 @@ export function GarmentCostCalculator() {
                 />
               </div>
               {/* Added input for Custom 3D Rendering Time */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>3D Rendering Time (min)</Label>
                 <Input
                   type="number"
@@ -1166,7 +1208,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Yarn Cost ($/kg)</Label>
                 <Input
                   type="number"
@@ -1177,7 +1219,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Weight (grams)</Label>
                 <Input
                   type="number"
@@ -1189,7 +1231,7 @@ export function GarmentCostCalculator() {
                   onWheel={handleWheel}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Margin (%)</Label>
                 <Input
                   type="number"
@@ -1197,9 +1239,13 @@ export function GarmentCostCalculator() {
                   value={marginPercent ?? ""}
                   onChange={(e) => setMarginPercent(e.target.value === "" ? null : Number.parseFloat(e.target.value))}
                   onWheel={handleWheel}
+                  className={(marginPercent ?? 0) >= 100 ? "border-amber-400 focus-visible:ring-amber-400" : ""}
                 />
+                {(marginPercent ?? 0) >= 100 && (
+                  <p className="text-[10px] text-amber-600">Capped at 99.9% — use surcharge for additional markup</p>
+                )}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>Surcharge (%)</Label>
                 <Input
                   type="number"
@@ -1214,28 +1260,12 @@ export function GarmentCostCalculator() {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleResetToDefaults}>
-              Reset to Defaults
-            </Button>
-            <Button onClick={handleSaveSettings} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Settings"}
-            </Button>
-          </div>
-
-          <Separator />
-
           {/* Cost Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Comprehensive Cost Breakdown</CardTitle>
-              <CardDescription>Detailed breakdown showing formula application for each process</CardDescription>
+          <Card className="shadow-sm">
+            <CardHeader className="px-4 py-3 pb-2">
+              <CardTitle className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cost Breakdown</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <Separator className="my-6" />
-
-              {/* Quick Reference Table */}
-              <div className="text-sm text-muted-foreground mb-2">Quick Reference Table:</div>
+            <CardContent className="px-4 pb-4">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1369,8 +1399,7 @@ export function GarmentCostCalculator() {
               </Table>
             </CardContent>
           </Card>
-        </CardContent>
-      </Card>
+
       {/* Knitting Cost Formula */}
       <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
         <h4 className="font-semibold mb-2">Knitting Cost Calculation:</h4>
@@ -1388,7 +1417,8 @@ export function GarmentCostCalculator() {
             {calculations.knitting.depreciation.toFixed(2)}
           </div>
           <div>
-            Rent: ${calculations.rentPerHour.toFixed(2)}/hr ÷ {knittingMachineCount ?? 1} machines ×{" "}
+            Rent: ${calculations.rentPerHour.toFixed(2)}/hr ÷ {calculations.totalMachineCount} total machines = $
+            {calculations.rentPerMachineHour.toFixed(2)}/machine-hr ×{" "}
             {calculations.knitting.timeHr.toFixed(2)}hr = ${calculations.knitting.rent.toFixed(2)}
           </div>
           <Separator className="my-2" />
@@ -1413,7 +1443,7 @@ export function GarmentCostCalculator() {
             {calculations.linking.depreciation.toFixed(2)}
           </div>
           <div>
-            Rent: ${calculations.rentPerHour.toFixed(2)}/hr ÷ {linkingMachineCount ?? 1} machines ×{" "}
+            Rent: ${calculations.rentPerMachineHour.toFixed(2)}/machine-hr ×{" "}
             {calculations.linking.timeHr.toFixed(2)}hr = ${calculations.linking.rent.toFixed(2)}
           </div>
           <Separator className="my-2" />
@@ -1446,7 +1476,7 @@ export function GarmentCostCalculator() {
             ${calculations.washing.steamingDepreciation.toFixed(2)}
           </div>
           <div>
-            Rent: ${calculations.rentPerHour.toFixed(2)}/hr ÷ {washingMachineCount ?? 1} machines ×{" "}
+            Rent: ${calculations.rentPerMachineHour.toFixed(2)}/machine-hr ×{" "}
             {calculations.washing.timeHr.toFixed(2)}hr = ${calculations.washing.rent.toFixed(2)}
           </div>
           <Separator className="my-2" />
@@ -1578,7 +1608,9 @@ export function GarmentCostCalculator() {
             <div className="text-blue-600 dark:text-blue-400">
               Rent Per Hour = Monthly Rent ÷ Working Hours/Month
               <br />
-              Rent Per Machine = Rent Per Hour ÷ Number of Machines
+              Rent Per Machine-Hour = Rent Per Hour ÷ Total Machines (all types)
+              <br />
+              <span className="text-xs opacity-70">Spreads rent evenly across every machine in the facility</span>
             </div>
           </div>
           <div className="font-mono bg-white dark:bg-slate-950 p-3 rounded border">

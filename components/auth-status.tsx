@@ -12,11 +12,9 @@ export default function AuthStatus() {
 
   if (session) {
     return (
-      <div className="text-sm flex items-center justify-end gap-4 p-2">
-        <span className="text-gray-700">
-          Signed in as <strong>{session.user?.email}</strong>
-        </span>
-        <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => signOut()}>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-muted-foreground hidden sm:block">{session.user?.email}</span>
+        <Button variant="ghost" size="sm" className="text-xs text-red-500 hover:text-red-600 h-8 px-3" onClick={() => signOut()}>
           Sign out
         </Button>
       </div>
@@ -24,14 +22,13 @@ export default function AuthStatus() {
   }
 
   return (
-    <div className="text-sm flex items-center justify-end p-2">
-      <Button
-        variant="outline"
-        className="bg-black text-white hover:bg-gray-800 hover:text-white"
-        onClick={() => signIn("google")}
-      >
-        Sign in with Google
-      </Button>
-    </div>
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-8 text-xs"
+      onClick={() => signIn("google")}
+    >
+      Sign in
+    </Button>
   )
 }
